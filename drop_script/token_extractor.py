@@ -12,7 +12,7 @@ import random
 class TokenExtractor():
     def __init__(self):
         ### The number of accounts entered should be a multiple of 3 or else the script will not be able to auto-grab all dropped cards!
-        # List your accounts (separated by commas) in the format: {"email": "example_email@gmail.com", "password": "example_password"}, ...
+        # List your accounts (separated by commas) in the format: [{"email": "example_email@gmail.com", "password": "example_password"}, ... ]
         # LEAVE THE LIST IN `tokens.json` EMPTY if you would like to use account logins (below) instead.
         self.ACCOUNTS = [
         ]
