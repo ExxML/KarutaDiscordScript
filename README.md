@@ -64,15 +64,10 @@ pip install -r requirements.txt
         - Ex 6. `cmd 1 /r <emoji>` reacts to the most recent bot message (in self.INTERACTION_BOT_IDS) with the specified emoji. For example, `cmd 1 /r 💰`.
         - Ex 7. `cmd /pause` / `cmd /resume` pauses and resumes the script.
         - Ex 8. `cmd 1-10 kinventory` sends `kinventory` from Accounts #1-10.
-
-<div style="margin-left: 6em">
-
-> > [!NOTE]
-> > - ONLY single account arguments work with `give`, `/lock` (for kmt), `/burn` (for kmb), `/b`, and `/r` commands. Account number ranges and `all` will not work with those commands.
-> > - If you mistype the account number for the `/lock` or `/burn` command, you must restart the trade/burn process. Sorry!
-> > - Automatic confirmation for the `kburn` command will not be supported. Use the `/b 🔥` command to manually confirm the burn, or use `kmultiburn` instead.
-
-</div>
+> [!NOTE]
+> - ONLY single account arguments work with `give`, `/lock` (for kmt), `/burn` (for kmb), `/b`, and `/r` commands. Account number ranges and `all` will not work with those commands.
+> - If you mistype the account number for the `/lock` or `/burn` command, you must restart the trade/burn process. Sorry!
+> - Automatic confirmation for the `kburn` command will not be supported. Use the `/b 🔥` command to manually confirm the burn, or use `kmultiburn` instead.
 
 2. **Special Event Grabber**
     - If there is a special event going on in Karuta, you can set `self.SPECIAL_EVENT = True` in `config.py` AND enter a **single** token (a string) in `special_event_token.json` to automatically react to drops with the event emoji (if there is one). The token must, of course, have access to all `self.DROP_CHANNEL_IDS` and `self.SERVER_ACTIVITY_DROP_CHANNEL_IDS`. 
