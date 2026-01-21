@@ -1,7 +1,7 @@
 # Karuta Discord Script
 Karuta Discord Script is a headless Python script for Windows that mimics realistic user behaviour to automatically drop and grab cards in Karuta, a Discord bot game.
 
-While this script was originally designed for Karuta botting, it can be easily adapted for other Discord self-bot purposes.
+While this script was originally designed for Karuta scripting, it can be easily adapted for other Discord self-bot purposes.
 
 
 ## Terminal Preview
