@@ -65,10 +65,14 @@ pip install -r requirements.txt
         - Ex 7. `cmd /pause` / `cmd /resume` pauses and resumes the script.
         - Ex 8. `cmd 1-10 kinventory` sends `kinventory` from Accounts #1-10.
 
->    [!NOTE]
->    - ONLY single account arguments work with `give`, `/lock` (for kmt), `/burn` (for kmb), `/b`, and `/r` commands. Account number ranges and `all` will not work with those commands.
->    - If you mistype the account number for the `/lock` or `/burn` command, you must restart the trade/burn process. Sorry!
->    - Automatic confirmation for the `kburn` command will not be supported. Use the `/b 🔥` command to manually confirm the burn, or use `kmultiburn` instead.
+<div style="margin-left: 6em">
+
+> [!NOTE]
+> - ONLY single account arguments work with `give`, `/lock` (for kmt), `/burn` (for kmb), `/b`, and `/r` commands. Account number ranges and `all` will not work with those commands.
+> - If you mistype the account number for the `/lock` or `/burn` command, you must restart the trade/burn process. Sorry!
+> - Automatic confirmation for the `kburn` command will not be supported. Use the `/b 🔥` command to manually confirm the burn, or use `kmultiburn` instead.
+
+</div>
 
 2. **Special Event Grabber**
     - If there is a special event going on in Karuta, you can set `self.SPECIAL_EVENT = True` in `config.py` AND enter a **single** token (a string) in `special_event_token.json` to automatically react to drops with the event emoji (if there is one). The token must, of course, have access to all `self.DROP_CHANNEL_IDS` and `self.SERVER_ACTIVITY_DROP_CHANNEL_IDS`. 
@@ -77,6 +81,7 @@ pip install -r requirements.txt
 
 ## Compatibility
 - This script can be used in conjunction with [CardCompanion](https://top.gg/bot/1380936713639166082), a Discord bot that can analyze and notify you of rare cards being dropped. If a "pog card" is dropped (a card that matches a certain stat (ex. >1000 wl)), CardCompanion will include an emoji in the message (see red circle below), indicating which card is the "pog card". The script will then ensure the grabber of the card is the same as the dropper, boosting the card stats and avoiding suspicion. If CardCompanion is not being used OR a "pog card" was not dropped, the grabber will be randomized by default.
+
     ![Card Companion Preview](preview_images/card_companion_preview.png)
     - If you have set up CardCompanion and you want to ONLY grab pog cards (perhaps to make your stats look less suspicious), you can set `self.ONLY_GRAB_POG_CARDS` to `True` in `config.py`.
 
