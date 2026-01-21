@@ -516,16 +516,27 @@ class DropScript():
                     print(f"❌ [Special Event Account] Retrieve message failed: IndexError.")
                     pass
 
-                random.shuffle(channel_tokens)  # Shuffle tokens again for random order messages
-                for i in range(num_channel_tokens):
-                    if random.choice([True, False]):  # 50% chance of sending random commands/messages
-                        msg_token = channel_tokens[i]
-                        msg_account = self.tokens.index(msg_token) + 1
+                # If only grabbing pog cards, then only the dropper will ever be active
+                # Hence, non-droppers should never send random messages in the channel; only the dropper will
+                if self.ONLY_GRAB_POG_CARDS:
+                    if random.choice([True, True, False]):  # 66% chance of sending random commands/messages
                         for _ in range(random.randint(1, 3)):
                             random_msg_list = random.choice([self.RANDOM_COMMANDS, self.RANDOM_MESSAGES])
                             random_msg = random.choice(random_msg_list)
-                            await self.send_message(msg_token, msg_account, channel_id, random_msg, self.RATE_LIMIT)
+                            await self.send_message(token, account, channel_id, random_msg, self.RATE_LIMIT)
                             await asyncio.sleep(random.uniform(1, 4))
+                else:
+                    # If not only grabbing pog cards (grabbing all cards), then all accounts in the channel are active, so all accounts should send random messages
+                    random.shuffle(channel_tokens)  # Shuffle tokens again for random order messages
+                    for i in range(num_channel_tokens):
+                        if random.choice([True, False]):  # 50% chance of sending random commands/messages
+                            msg_token = channel_tokens[i]
+                            msg_account = self.tokens.index(msg_token) + 1
+                            for _ in range(random.randint(1, 3)):
+                                random_msg_list = random.choice([self.RANDOM_COMMANDS, self.RANDOM_MESSAGES])
+                                random_msg = random.choice(random_msg_list)
+                                await self.send_message(msg_token, msg_account, channel_id, random_msg, self.RATE_LIMIT)
+                                await asyncio.sleep(random.uniform(1, 4))
         else:
             if self.TERMINAL_VISIBILITY:
                 hwnd = win32console.GetConsoleWindow()
