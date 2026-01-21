@@ -20,10 +20,13 @@ class TokenExtractor():
         self.SAVE_TOKENS = True  # (bool) Choose whether to save tokens to file (tokens.json)
 
         try:
-            with open("tokens.json", "r") as tokens_file:
+            with open("tokens/tokens.json", "r") as tokens_file:
                 self.TOKENS = json.load(tokens_file)
                 if not isinstance(self.TOKENS, list) or not all(isinstance(token, str) for token in self.TOKENS):
-                    input('⛔ Token Format Error ⛔\nExpected a list of strings. Example: ["token1", "token2", "token3"]')
+                    input('⛔ Token Format Error ⛔\nExpected a list of strings. Example: ["exampleToken1", "exampleToken2", "exampleToken3"]')
+                    sys.exit()
+                elif self.TOKENS == ["exampleToken1", "exampleToken2", "exampleToken3", "..."]:
+                    input('⛔ Token Format Error ⛔\nPlease replace the example tokens in tokens.json with your real tokens.')
                     sys.exit()
         except (FileNotFoundError, json.JSONDecodeError):
             self.TOKENS = []
@@ -154,7 +157,7 @@ class TokenExtractor():
             input(f"\n⚠️ Configuration Warning ⚠️\nYou entered {len(self.ACCOUNTS)} accounts, but only {num_tokens} tokens were found.\nPress `Enter` if you wish to continue.")
         
         if self.SAVE_TOKENS:
-            with open("tokens.json", "w") as tokens_file:
+            with open("tokens/tokens.json", "w") as tokens_file:
                 json.dump(tokens, tokens_file)
                 print("\nℹ️ Tokens saved to tokens.json")
 

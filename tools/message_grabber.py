@@ -23,10 +23,13 @@ class MessageGrabber():
             "127.0.6533.112", "127.0.6533.77"
         ]
         try:
-            with open("tokens.json", "r") as tokens_file:
+            with open("tokens/tokens.json", "r") as tokens_file:
                 self.TOKENS = json.load(tokens_file)
                 if not isinstance(self.TOKENS, list) or not all(isinstance(token, str) for token in self.TOKENS):
-                    input('⛔ Token Format Error ⛔\nExpected a list of strings. Example: ["token1", "token2", "token3"]')
+                    input('⛔ Token Format Error ⛔\nExpected a list of strings. Example: ["exampleToken1", "exampleToken2", "exampleToken3"]')
+                    sys.exit()
+                elif self.TOKENS == ["exampleToken1", "exampleToken2", "exampleToken3", "..."]:
+                    input('⛔ Token Format Error ⛔\nPlease replace the example tokens in tokens.json with your real tokens.')
                     sys.exit()
         except (FileNotFoundError, json.JSONDecodeError):
             self.TOKENS = []

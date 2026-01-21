@@ -611,10 +611,12 @@ class DropScript():
                 with open("special_event_token.json", "r") as special_event_token_file:
                     self.special_event_token = json.load(special_event_token_file)
                     if not isinstance(self.special_event_token, str):
-                        input('⛔ Special Event Token Error ⛔\nExpected a string. Example: "token1"')
+                        input('⛔ Special Event Token Error ⛔\nExpected a string. Example: "exampleSpecialEventToken"')
                         sys.exit()
                     elif self.special_event_token == "":
                         print("\n❌ Not watching for special event reactions (no token entered in special_event_token.json).")
+                    elif self.special_event_token == "exampleSpecialEventToken":
+                        print("\n❌ Not watching for special event reactions. Please replace the example token in special_event_token.json with a real token.")
                     else:
                         asyncio.create_task(self.run_special_event_checker())
                         print(f"\nℹ️ Watching for special event reactions in {len(self.DROP_CHANNEL_IDS)} script drop channels " +
@@ -623,7 +625,7 @@ class DropScript():
                 self.special_event_token = ""
                 print("\n❌ Not watching for special event reactions (no special_event_token.json file found).")
             except json.JSONDecodeError:
-                input('⛔ Special Event Token Error ⛔\nExpected a string. Example: "token1"')
+                input('⛔ Special Event Token Error ⛔\nExpected a string. Example: "exampleSpecialEventToken"')
                 sys.exit()
         else:
             self.special_event_token = ""

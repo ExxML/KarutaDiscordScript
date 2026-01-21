@@ -27,12 +27,15 @@ class AutoVoter():
         signal.signal(signal.SIGTERM, self.cleanup)
         
         try:
-            with open("tokens.json", "r") as tokens_file:
+            with open("tokens/tokens.json", "r") as tokens_file:
                 self.TOKENS = json.load(tokens_file)
         except (FileNotFoundError, json.JSONDecodeError):
             self.TOKENS = []
         if not isinstance(self.TOKENS, list) or not all(isinstance(token, str) for token in self.TOKENS):
-            input('⛔ Token Format Error ⛔\nExpected a list of strings. Example: ["token1", "token2", "token3"]')
+            input('⛔ Token Format Error ⛔\nExpected a list of strings. Example: ["exampleToken1", "exampleToken2", "exampleToken3"]')
+            sys.exit()
+        elif self.TOKENS == ["exampleToken1", "exampleToken2", "exampleToken3", "..."]:
+            input('⛔ Token Format Error ⛔\nPlease replace the example tokens in tokens.json with your real tokens.')
             sys.exit()
 
         self.WINDOWS_VERSIONS = ["10.0", "11.0"]
