@@ -67,10 +67,10 @@ pip install -r requirements.txt
 
 <div style="margin-left: 6em">
 
-> [!NOTE]
-> - ONLY single account arguments work with `give`, `/lock` (for kmt), `/burn` (for kmb), `/b`, and `/r` commands. Account number ranges and `all` will not work with those commands.
-> - If you mistype the account number for the `/lock` or `/burn` command, you must restart the trade/burn process. Sorry!
-> - Automatic confirmation for the `kburn` command will not be supported. Use the `/b 🔥` command to manually confirm the burn, or use `kmultiburn` instead.
+> > [!NOTE]
+> > - ONLY single account arguments work with `give`, `/lock` (for kmt), `/burn` (for kmb), `/b`, and `/r` commands. Account number ranges and `all` will not work with those commands.
+> > - If you mistype the account number for the `/lock` or `/burn` command, you must restart the trade/burn process. Sorry!
+> > - Automatic confirmation for the `kburn` command will not be supported. Use the `/b 🔥` command to manually confirm the burn, or use `kmultiburn` instead.
 
 </div>
 
