@@ -58,17 +58,17 @@ pip install -r requirements.txt
         ```
         - Ex 1. `cmd all kcollection o:wishlist` sends `kcollection o:wishlist` from ALL accounts.
         - Ex 2. `cmd 1 kgive @ExxML <card_code>` sends a card transfer from Account #1 (the first account listed in `self.ACCOUNTS`). A few seconds after the transfer is sent, the script will automatically confirm the transfer (from Account #1).
-        - Ex 3. `cmd 3 kmultitrade @ExxML` sends a multitrade request from Account #3. After the trade items have been entered, type `cmd 3 /lock` to lock and confirm the trade (from Account #3).
-        - Ex 4. `cmd 1 kmultiburn <filters>` multiburns cards on Account #1. When you are FULLY READY to complete the multiburn, type `cmd 1 /burn` to confirm the multiburn.
+        - Ex 3. Suppose `cmd 3 kmultitrade @ExxML`. After the trade items have been entered, type `cmd 3 /lock` to lock and confirm the trade (from Account #3).
+        - Ex 4. Suppose `cmd 1 kmultiburn <filters>`. When you are FULLY READY to complete the multiburn, type `cmd 1 /burn` to confirm the multiburn.
         - Ex 5. `cmd 1 /b <emoji / label>` clicks the button on the most recent bot message (in self.INTERACTION_BOT_IDS) with the specified emoji OR label. For example, `cmd 1 /b ✅` or `cmd 1 /b I understand`.
         - Ex 6. `cmd 1 /r <emoji>` reacts to the most recent bot message (in self.INTERACTION_BOT_IDS) with the specified emoji. For example, `cmd 1 /r 💰`.
         - Ex 7. `cmd /pause` / `cmd /resume` pauses and resumes the script.
         - Ex 8. `cmd 1-10 kinventory` sends `kinventory` from Accounts #1-10.
 
-        > [!NOTE]
-        > - ONLY single account arguments work with `give`, `multitrade`, `/lock`, `multiburn`, or `/burn` commands. Account number ranges and `all` will not work with those commands.
-        > - If you mistype the account number for the `/lock` or `/burn` command, you must restart the trade/burn process. Sorry!
-        > - Automatic confirmation for the `kburn` command will not be supported. Use the `/b 🔥` command to manually confirm the burn, or use `kmultiburn` instead.
+>    [!NOTE]
+>    - ONLY single account arguments work with `give`, `/lock` (for kmt), `/burn` (for kmb), `/b`, and `/r` commands. Account number ranges and `all` will not work with those commands.
+>    - If you mistype the account number for the `/lock` or `/burn` command, you must restart the trade/burn process. Sorry!
+>    - Automatic confirmation for the `kburn` command will not be supported. Use the `/b 🔥` command to manually confirm the burn, or use `kmultiburn` instead.
 
 2. **Special Event Grabber**
     - If there is a special event going on in Karuta, you can set `self.SPECIAL_EVENT = True` in `config.py` AND enter a **single** token (a string) in `special_event_token.json` to automatically react to drops with the event emoji (if there is one). The token must, of course, have access to all `self.DROP_CHANNEL_IDS` and `self.SERVER_ACTIVITY_DROP_CHANNEL_IDS`. 

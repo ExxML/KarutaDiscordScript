@@ -241,7 +241,7 @@ class CommandChecker():
                 else:
                     print(f"❌ [Account #{account}] Confirm card transfer failed: ✅ button not found.")
 
-    async def check_multitrade(self, token: str, account: int, command: str):
+    async def check_lock_multitrade(self, token: str, account: int, command: str):
         if command == self.KARUTA_LOCK_COMMAND:
             multitrade_lock_message = await self.get_karuta_message(token, account, self.COMMAND_CHANNEL_ID, self.KARUTA_MULTITRADE_LOCK_MESSAGE, self.RATE_LIMIT)
             if multitrade_lock_message and multitrade_lock_message not in self.multitrade_messages:
@@ -386,7 +386,7 @@ class CommandChecker():
                         if send:
                             await self.main.send_message(token, lower_account, self.COMMAND_CHANNEL_ID, command, self.RATE_LIMIT)
                         await self.check_card_transfer(token, lower_account, command)
-                        await self.check_multitrade(token, lower_account, command)
+                        await self.check_lock_multitrade(token, lower_account, command)
                         await self.check_multiburn(token, lower_account, command)
                         await self.confirm_multiburn(token, lower_account, command)
                         await self.check_click_button(token, lower_account, command)
