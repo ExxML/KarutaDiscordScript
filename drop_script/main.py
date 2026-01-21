@@ -17,7 +17,7 @@ import math
 import time
 import signal
 
-class MessageBotter():
+class DropScript():
     def __init__(self):
         # Initialize config and map instance constants
         self.__dict__.update(vars(Config()))
@@ -685,7 +685,7 @@ class MessageBotter():
             sys.exit()
 
 if __name__ == "__main__":
-    bot = MessageBotter()
+    bot = DropScript()
     RELAUNCH_FLAG = "--no-relaunch"
     if RELAUNCH_FLAG not in sys.argv:
         ctypes.windll.shell32.ShellExecuteW(

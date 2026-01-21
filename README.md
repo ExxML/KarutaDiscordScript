@@ -1,10 +1,10 @@
-# Discord Karuta Botter
-Discord Karuta Botter is a headless Python script for Windows that mimics realistic user behaviour to automatically drop and grab cards in Karuta, a Discord bot game.
+# Karuta Discord Script
+Karuta Discord Script is a headless Python script for Windows that mimics realistic user behaviour to automatically drop and grab cards in Karuta, a Discord bot game.
 
 While this script was originally designed for Karuta botting, it can be easily adapted for other Discord self-bot purposes.
 
 ## Terminal Preview
-![Karuta Botter Preview](preview_images/karuta_botter_preview.png)
+![Karuta Script Preview](preview_images/drop_script_preview.png)
 
 ## ⚠️ WARNING ⚠️
 Discord's Terms of Service explicitly prohibits self-bots (as of August 2025, and for the foreseeable future). Unauthorized use of this script *could* result in account bans. Use at your own risk.
@@ -30,13 +30,13 @@ If you decide to buy accounts, I recommend purchasing from https://shop.xyliase.
 > For the script to auto-grab all dropped cards, the number of accounts you input must be a **multiple of 3**. Make sure no accounts have 2FA enabled, and all accounts should have message access in all of `self.COMMAND_CHANNEL_ID` and `self.DROP_CHANNEL_IDS` in `config.py`.
 
 ## Usage
-1. Edit the `__init__` constants in `config.py`. `self.COMMAND_USER_IDS` restricts message commands to these accounts- leave the list empty if you want to allow *any* user to send commands. `self.COMMAND_CHANNEL_ID` is the channel where you can send message commands to control your accounts remotely. `self.DROP_CHANNEL_IDS` is a list of channels where the bot will drop cards. **There must be 1 drop channel per 3 accounts used.**
+1. Edit the `__init__` constants in `config.py`. `self.COMMAND_USER_IDS` restricts message commands to these accounts- leave the list empty if you want to allow *any* user to send commands. `self.COMMAND_CHANNEL_ID` is the channel where you can send message commands to control your accounts remotely. `self.DROP_CHANNEL_IDS` is a list of channels where the script will drop cards. **There must be 1 drop channel per 3 accounts used.**
 2. Enter your emails and passwords in `self.ACCOUNTS` in `token_extractor.py` using the following format:
 ```python
 {"email": "example_email@gmail.com", "password": "example_password"}, ...
 ```
 
-Alternatively, you can enter your tokens as a list of strings in `tokens.json`. **`tokens.json` MUST be in the root directory of the project (NOT in the karuta_botter folder).** Leave the list in `tokens.json` empty if you would like to use the token extractor instead. 
+Alternatively, you can enter your tokens as a list of strings in `tokens.json`. **`tokens.json` MUST be in the root directory of the project (NOT in the drop_script folder).** Leave the list in `tokens.json` empty if you would like to use the token extractor instead. 
 
 **Generally, I recommend using tokens instead of account credentials so you can save time and avoid potential rate limiting.** If you don't have your tokens on hand, you can automatically extract and save your tokens to `tokens.json` by filling in your account credentials in `token_extractor.py`, setting `self.SAVE_TOKENS = True`, then running `main.py`.
 
@@ -73,7 +73,7 @@ cmd <account_number |OR| account_number_range |OR| 'all'> <message>
 
 ## Top.gg Auto-Voter
 ### Usage
-1. Follow the usage steps above (for Discord Karuta Botter) to obtain a list of tokens in `tokens.json`.
+1. Follow the usage steps above to obtain a list of tokens in `tokens.json`, or manually paste your tokens in a list.
 2. Ensure your (normal) Chrome browser is up-to-date.
 3. **DO NOT** use a VPN while running this script. Cloudflare flags VPNs.
 4. If you wish, edit `self.RAND_DELAY_MIN` and `self.RAND_DELAY_MAX` to change the (randomized) amount of time between votes.
