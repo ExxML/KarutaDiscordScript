@@ -51,7 +51,7 @@ pip install -r requirements.txt
 ## Usage Tips/Features
 1. **Command Checker**
     - This script has a built-in command system that allows users to send messages, reactions, and button presses from any of the accounts in `tokens.json`.
-    - In `config.py`, `self.COMMAND_USER_IDS` restricts the users who will be allowed to use commands. You can also set `self.COMMAND_SERVER_ID` and `self.COMMAND_CHANNEL_ID` to an empty string to disable message commands entirely.
+    - In `config.py`, `self.COMMAND_USER_IDS` restricts the users who will be allowed to use commands. You can also set `self.COMMAND_CHANNEL_ID` to an empty string to disable message commands entirely.
     - To send a message from any account, manually send a message in the `self.COMMAND_CHANNEL_ID` channel using the following format (without angle brackets):
         ```bash
         cmd <account_number |OR| account_number_range |OR| 'all'> <message>

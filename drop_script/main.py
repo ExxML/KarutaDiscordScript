@@ -136,15 +136,14 @@ class DropScript():
         try:
             if not all([
                 all(id.isdigit() for id in self.COMMAND_USER_IDS),
-                (self.COMMAND_SERVER_ID == "" or self.COMMAND_SERVER_ID.isdigit()),
                 (self.COMMAND_CHANNEL_ID == "" or self.COMMAND_CHANNEL_ID.isdigit()),
                 all(id.isdigit() for id in self.DROP_CHANNEL_IDS),
                 all(id.isdigit() for id in self.SERVER_ACTIVITY_DROP_CHANNEL_IDS)
             ]):
-                input("⛔ Configuration Error ⛔\nPlease enter non-empty, numeric strings for the command user ID(s), command server/channel ID, and (server activity) drop channel ID(s) in config.py.")
+                input("⛔ Configuration Error ⛔\nPlease enter non-empty, numeric strings for the command user ID(s), command channel ID, and (server activity) drop channel ID(s) in config.py.")
                 sys.exit()
         except AttributeError:
-            input("⛔ Configuration Error ⛔\nPlease enter strings (not integers) for the command user ID(s), command server/channel ID, and (server activity) drop channel ID(s) in config.py.")
+            input("⛔ Configuration Error ⛔\nPlease enter strings (not integers) for the command user ID(s), command channel ID, and (server activity) drop channel ID(s) in config.py.")
             sys.exit()
         if not all([
             isinstance(self.TERMINAL_VISIBILITY, int),
@@ -364,12 +363,11 @@ class DropScript():
                         print(f"❌ [Account #{account}] React {emoji} failed: Error code {status}.")
 
     async def run_command_checker(self):
-        if all([self.COMMAND_SERVER_ID, self.COMMAND_CHANNEL_ID]):  # If command server id AND channel id field is not empty
+        if self.COMMAND_CHANNEL_ID:  # If command channel id field is not empty
             command_checker = CommandChecker(
                 main = self,
                 tokens = self.tokens,
                 command_user_ids = self.COMMAND_USER_IDS,
-                command_server_id = self.COMMAND_SERVER_ID,
                 command_channel_id = self.COMMAND_CHANNEL_ID,
                 karuta_prefix = self.KARUTA_PREFIX,
                 karuta_bot_id = self.KARUTA_BOT_ID,
@@ -591,7 +589,7 @@ class DropScript():
                         print(f"✅ [Account #{self.tokens.index(token) + 1}] Skipped drop.")
                     await self.pause_event.wait()  # Check if need to pause
                     if self.DROP_FAIL_LIMIT >= 0 and self.drop_fail_count >= self.DROP_FAIL_LIMIT:  # If FAIL_LIMIT == -1 (or any neg num), never pause
-                        if self.COMMAND_SERVER_ID and self.COMMAND_CHANNEL_ID:
+                        if self.COMMAND_CHANNEL_ID:
                             await self.send_message(token, self.tokens.index(token) + 1, self.COMMAND_CHANNEL_ID, "⚠️ Drop fail limit reached", 0)
                         if self.TERMINAL_VISIBILITY:
                             await self.async_input_handler(f"\n⚠️ Drop Fail Limit Reached ⚠️\nThe script has failed to retrieve {self.DROP_FAIL_LIMIT} total drops. Automatically pausing drops...\nPress `Enter` if you wish to resume.\n",
@@ -666,13 +664,13 @@ class DropScript():
                     print(f"  - Account #{self.tokens.index(token) + 1}")
                 task_instances.append(asyncio.create_task(self.run_instance(channel_num, channel_id, start_delay_seconds, channel_tokens.copy(), channel_time_limit_seconds)))
         await asyncio.sleep(3)  # Short delay to show user the account/channel information
-        if self.COMMAND_SERVER_ID and self.COMMAND_CHANNEL_ID:
+        if self.COMMAND_CHANNEL_ID:
             random_token = random.choice(self.tokens)
             print(f"\n{datetime.now().strftime('%I:%M:%S %p').lstrip('0')}")
             await self.send_message(random_token, self.tokens.index(random_token) + 1, self.COMMAND_CHANNEL_ID, "Execution started", 0)
         await asyncio.gather(*task_instances)
         await asyncio.sleep(1)
-        if self.COMMAND_SERVER_ID and self.COMMAND_CHANNEL_ID:
+        if self.COMMAND_CHANNEL_ID:
             random_token = random.choice(self.tokens)
             await self.send_message(random_token, self.tokens.index(random_token) + 1, self.COMMAND_CHANNEL_ID, "Execution completed", 0)
         if self.TERMINAL_VISIBILITY:
@@ -708,8 +706,8 @@ if __name__ == "__main__":
     bot.check_config()
     bot.tokens = TokenExtractor().main(len(bot.DROP_CHANNEL_IDS), bot.WINDOWS_VERSIONS, bot.BROWSER_VERSIONS)
     
-    # Set up signal handlers for terminal window closure
-    if bot.COMMAND_SERVER_ID and bot.COMMAND_CHANNEL_ID:
+    # Set up signal handlers to send a message on terminal window closure
+    if bot.COMMAND_CHANNEL_ID:
         signal.signal(signal.SIGTERM, bot.signal_handler)
         signal.signal(signal.SIGINT, bot.signal_handler)
     
