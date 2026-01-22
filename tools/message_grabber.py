@@ -1,10 +1,10 @@
-import aiohttp
-import asyncio
 import random
+import asyncio
+import aiohttp
 import base64
+import ctypes
 import json
 import sys
-import ctypes
 
 class MessageGrabber():
     def __init__(self):
