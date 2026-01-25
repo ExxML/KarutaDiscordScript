@@ -1,8 +1,8 @@
-import aiohttp
 from aiohttp import ClientConnectorError, ClientConnectorDNSError
 from datetime import datetime
-import asyncio
 import random
+import asyncio
+import aiohttp
 import uuid
 
 class CommandChecker():
