@@ -8,7 +8,7 @@ import sys
 import os
 import re
 # Import config
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 from drop_script.config import Config
 
 class AutoWorker():
