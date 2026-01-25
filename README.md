@@ -27,8 +27,16 @@ pip install -r requirements.txt
 5. All accounts must ONLY drop 3 cards, not 4. If an accounts drops 4 cards, the fourth card will not be auto-grabbed.
 6. Create/buy accounts for the script to use! I **highly recommend** purchasing FULLY VERIFIED alt accounts from a trusted shop. A fully verified account means that it has a verified email AND phone number- a phone number connected to the account is imperative because Discord frequently phone-locks suspicious accounts. (You don't need to have access to the phone, it just needs to be connected to your account.)
     - If you decide to buy accounts, I recommend purchasing from https://shop.xyliase.com/product/discord-accounts-%7C-fully-verified-tokens (I am not affiliated with this shop). As of July 2025, there is plenty of cheap stock and customer service is excellent.
-7. Edit the `__init__` constants in `config.py`. `self.COMMAND_USER_IDS` restricts message commands to these accounts- leave the list empty if you want to allow *any* user to send commands. `self.COMMAND_CHANNEL_IDS` are the channels where you can send message commands to control your accounts remotely. `self.DROP_CHANNEL_IDS` is a list of channels where the script will drop cards. **There must be 1 drop channel per 3 accounts used.**
-8. Input accounts into the script. You can accomplish this via two ways:
+7. Edit the `__init__` constants in `config.py`.
+- `self.COMMAND_USER_IDS` restricts message commands to these accounts- leave this list empty if you want to allow *any* user to send commands. `self.COMMAND_CHANNEL_IDS` are the channels where you are allowed to send message commands- leave this list empty if you want to disable commands entirely.
+  - Read more about how to use message commands in Command Checker under Usage Tips/Features below.
+- `self.DROP_CHANNEL_IDS` is a list of channels where the script will drop cards. 
+  - **You MUST have at least 1 drop channel for every 3 accounts used.**
+- `self.SERVER_ACTIVITY_DROP_CHANNEL_IDS` is used for two purposes:
+  1. During a Karuta special event, the special event account will track these channels and automatically react to the special event emoji, whatever it happens to be.
+  2. If CardCompanion is in use, the server drop account will also track these channels and automatically grab pog cards, if the setting is enabled.
+  - Read more about how these two features work in Usage Tips/Features below.
+8. Enter your accounts into the script. You can accomplish this via two ways:
     1. Enter your emails and passwords in `self.ACCOUNTS` in `token_extractor.py` using the following format, and then run `token_extractor.py`.
         ```python
         [{"email": "example_email@gmail.com", "password": "example_password"}, ... ]
