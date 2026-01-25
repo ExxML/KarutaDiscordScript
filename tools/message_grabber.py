@@ -101,7 +101,7 @@ class MessageGrabber():
                 else:
                     print(f"❌ Retrieve message failed: Error code {status}.\n")
                     return
-                print(f"❌ Retrieve message failed: Message '{msg_id}' was not found in 100 recent messages.\n")
+                print(f"❌ Retrieve message failed: Message '{msg_id}' was not found in the recent 100 messages.\n")
 
 if __name__ == "__main__":
     RELAUNCH_FLAG = "--no-relaunch"
