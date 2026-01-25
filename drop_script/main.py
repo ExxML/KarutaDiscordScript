@@ -246,7 +246,7 @@ class DropScript():
                                     self.KARUTA_DROP_MESSAGE in msg.get('content', ''),
                                     self.KARUTA_EXPIRED_DROP_MESSAGE not in msg.get('content', '')
                                 ]):
-                                    if self.SPECIAL_EVENT and wait_for_emoji:  # If special event, wait an additional 2-3s to watch for the special event emoji
+                                    if self.SPECIAL_EVENT and self.special_event_token and wait_for_emoji:  # If special event, wait an additional 2-3s to watch for the special event emoji
                                         await asyncio.sleep(random.uniform(2, 3))
                                         wait_for_emoji = False
                                         continue
