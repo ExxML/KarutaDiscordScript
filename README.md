@@ -29,13 +29,13 @@ pip install -r requirements.txt
     - If you decide to buy accounts, I recommend purchasing from https://shop.xyliase.com/product/discord-accounts-%7C-fully-verified-tokens (I am not affiliated with this shop). As of July 2025, there is plenty of cheap stock and customer service is excellent.
 7. Edit the `__init__` constants in `config.py`. `self.COMMAND_USER_IDS` restricts message commands to these accounts- leave the list empty if you want to allow *any* user to send commands. `self.COMMAND_CHANNEL_ID` is the channel where you can send message commands to control your accounts remotely. `self.DROP_CHANNEL_IDS` is a list of channels where the script will drop cards. **There must be 1 drop channel per 3 accounts used.**
 8. Input accounts into the script. You can accomplish this via two ways:
-    1. Enter your emails and passwords in `self.ACCOUNTS` in `token_extractor.py` using the following format:
+    1. Enter your emails and passwords in `self.ACCOUNTS` in `token_extractor.py` using the following format, and then run `token_extractor.py`.
         ```python
         [{"email": "example_email@gmail.com", "password": "example_password"}, ... ]
         ```
     2. **OR**, you can enter your tokens as a list of strings in `tokens.json`. Leave the list in `tokens.json` empty if you would like to use the token extractor for account logins instead. 
 
-    - **Generally, I recommend using tokens instead of account credentials so you can save time and avoid potential rate limiting.** If you don't have your tokens on hand, you can automatically extract and save your tokens to `tokens.json` by filling in your account credentials in `token_extractor.py`, setting `self.SAVE_TOKENS = True`, then running `main.py`.
+    - **I recommend using tokens instead of account credentials so you can save time and avoid potential rate limiting.** If you don't have your tokens on hand, you can automatically extract and save your tokens to `tokens.json` by filling in your account credentials in `token_extractor.py`, setting `self.SAVE_TOKENS = True`, then running `token_extractor.py`.
 9. Run `main.py`.
 
 > [!TIP]
