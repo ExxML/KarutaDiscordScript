@@ -704,7 +704,7 @@ if __name__ == "__main__":
         )
         sys.exit()
     bot.check_config()
-    bot.tokens = TokenExtractor().main(len(bot.DROP_CHANNEL_IDS), bot.WINDOWS_VERSIONS, bot.BROWSER_VERSIONS)
+    bot.tokens = TokenExtractor().main(standalone = False, num_channels = len(bot.DROP_CHANNEL_IDS))
     
     # Set up signal handlers to send a message on terminal window closure
     if bot.COMMAND_CHANNEL_ID:
