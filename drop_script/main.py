@@ -618,7 +618,7 @@ class DropScript():
         
         if self.SPECIAL_EVENT:
             try:
-                with open("special_event_token.json", "r") as special_event_token_file:
+                with open("tokens/special_event_token.json", "r") as special_event_token_file:
                     self.special_event_token = json.load(special_event_token_file)
                     if not isinstance(self.special_event_token, str):
                         input('⛔ Special Event Token Error ⛔\nExpected a string. Example: "exampleSpecialEventToken"')
