@@ -43,6 +43,15 @@ class CommandChecker():
         self.multiburn_initial_messages = []
         self.multiburn_fire_messages = []
 
+    async def get_user_id(self, token: str, channel_id: str):
+        headers = self.main.get_headers(token, channel_id)
+        user_id = None
+        async with aiohttp.ClientSession() as session:
+            async with session.get("https://discord.com/api/v10/users/@me", headers = headers) as resp:
+                if resp.status == 200:
+                    user_id = (await resp.json()).get('id')
+        return user_id
+
     async def get_karuta_message(self, token: str, account: int, channel_id: str, search_content: str, rate_limited: int):
         url = f"https://discord.com/api/v10/channels/{channel_id}/messages?limit=50"
         headers = self.main.get_headers(token, channel_id)
@@ -53,7 +62,8 @@ class CommandChecker():
                     messages = await resp.json()
                     try:
                         for msg in messages:
-                            if msg.get('author', {}).get('id') == self.KARUTA_BOT_ID:
+                            referenced_author_id = msg.get('referenced_message', {}).get('author', {}).get('id')  # Get the user ID of the user being replied to
+                            if msg.get('author', {}).get('id') == self.KARUTA_BOT_ID and referenced_author_id == await self.get_user_id(token, channel_id):
                                 if search_content == self.KARUTA_CARD_TRANSFER_TITLE and msg.get('embeds') and self.KARUTA_CARD_TRANSFER_TITLE == msg['embeds'][0].get('title'):
                                     print(f"✅ [Account #{account}] Retrieved card transfer message.")
                                     return msg
