@@ -122,8 +122,8 @@ class CommandChecker():
                                 elif account_str.lower() == self.KARUTA_PAUSE_COMMAND:
                                     if self.main.pause_event.is_set():
                                         self.main.pause_event.clear()  # Pause drops
-                                        print("\n🤖 Pausing all drops...")
-                                        await self.main.send_message(token, self.tokens.index(token) + 1, self.COMMAND_CHANNEL_ID, "Pausing all drops...", 0)
+                                        print("\n🤖 Pausing drops...")
+                                        await self.main.send_message(token, self.tokens.index(token) + 1, self.COMMAND_CHANNEL_ID, "Pausing drops...", 0)
                                     else:
                                         print("\n🤖 Drops are already paused.")
                                         await self.main.send_message(token, self.tokens.index(token) + 1, self.COMMAND_CHANNEL_ID, "Drops are already paused.", 0)
@@ -131,8 +131,8 @@ class CommandChecker():
                                 elif account_str.lower() == self.KARUTA_RESUME_COMMAND:
                                     if not self.main.pause_event.is_set():
                                         self.main.pause_event.set()  # Resume drops
-                                        print("\n🤖 Resuming all drops...")
-                                        await self.main.send_message(token, self.tokens.index(token) + 1, self.COMMAND_CHANNEL_ID, "Resuming all drops...", 0)
+                                        print("\n🤖 Resuming drops...")
+                                        await self.main.send_message(token, self.tokens.index(token) + 1, self.COMMAND_CHANNEL_ID, "Resuming drops...", 0)
                                     else:
                                         print("\n🤖 Drops have already resumed.")
                                         await self.main.send_message(token, self.tokens.index(token) + 1, self.COMMAND_CHANNEL_ID, "Drops have already resumed.", 0)
