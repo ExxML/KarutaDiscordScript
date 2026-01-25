@@ -140,10 +140,10 @@ class DropScript():
                 all(id.isdigit() for id in self.DROP_CHANNEL_IDS),
                 all(id.isdigit() for id in self.SERVER_ACTIVITY_DROP_CHANNEL_IDS)
             ]):
-                input("⛔ Configuration Error ⛔\nPlease enter non-empty, numeric strings for the command user ID(s), command channel IDs (or leave empty), and (server activity) drop channel ID(s) in config.py.")
+                input("⛔ Configuration Error ⛔\nPlease enter non-empty, numeric strings for the command user IDs (or leave empty), command channel IDs (or leave empty), and (server activity) drop channel IDs in config.py.")
                 sys.exit()
         except AttributeError:
-            input("⛔ Configuration Error ⛔\nPlease enter strings (not integers) for the command user ID(s), command channel IDs (or leave empty), and (server activity) drop channel ID(s) in config.py.")
+            input("⛔ Configuration Error ⛔\nPlease enter strings (not integers) for the command user IDs (or leave empty), command channel IDs (or leave empty), and (server activity) drop channel IDs in config.py.")
             sys.exit()
         if not all([
             isinstance(self.TERMINAL_VISIBILITY, int),
@@ -629,7 +629,7 @@ class DropScript():
                         print("\n❌ Not watching for special event reactions. Please replace the example token in special_event_token.json with a real token.")
                     else:
                         asyncio.create_task(self.run_special_event_checker())
-                        print(f"\nℹ️ Watching for special event reactions in {len(self.DROP_CHANNEL_IDS)} script drop channels " +
+                        print(f"\nℹ️ Watching for special event reactions in {len(self.DROP_CHANNEL_IDS)} script drop channel(s) " +
                                 f"and {len(self.SERVER_ACTIVITY_DROP_CHANNEL_IDS)} server activity drop channel(s).")
             except FileNotFoundError:
                 self.special_event_token = ""

@@ -16,7 +16,7 @@ class AutoWorker():
         self.config = Config()
         self.WORK_CHANNEL_IDS = self.config.DROP_CHANNEL_IDS
         if not self.WORK_CHANNEL_IDS or not all(id.isdigit() for id in self.WORK_CHANNEL_IDS):
-            input("⛔ Configuration Error ⛔\nPlease enter non-empty, numeric strings for the drop channel ID(s) in config.py." +
+            input("⛔ Configuration Error ⛔\nPlease enter non-empty, numeric strings for the drop channel IDs in config.py." +
                     "\nThese channels are where the accounts will send work commands.")
             sys.exit()
         
