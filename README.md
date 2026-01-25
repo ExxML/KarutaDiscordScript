@@ -27,7 +27,7 @@ pip install -r requirements.txt
 5. All accounts must ONLY drop 3 cards, not 4. If an accounts drops 4 cards, the fourth card will not be auto-grabbed.
 6. Create/buy accounts for the script to use! I **highly recommend** purchasing FULLY VERIFIED alt accounts from a trusted shop. A fully verified account means that it has a verified email AND phone number- a phone number connected to the account is imperative because Discord frequently phone-locks suspicious accounts. (You don't need to have access to the phone, it just needs to be connected to your account.)
     - If you decide to buy accounts, I recommend purchasing from https://shop.xyliase.com/product/discord-accounts-%7C-fully-verified-tokens (I am not affiliated with this shop). As of July 2025, there is plenty of cheap stock and customer service is excellent.
-7. Edit the `__init__` constants in `config.py`. `self.COMMAND_USER_IDS` restricts message commands to these accounts- leave the list empty if you want to allow *any* user to send commands. `self.COMMAND_CHANNEL_ID` is the channel where you can send message commands to control your accounts remotely. `self.DROP_CHANNEL_IDS` is a list of channels where the script will drop cards. **There must be 1 drop channel per 3 accounts used.**
+7. Edit the `__init__` constants in `config.py`. `self.COMMAND_USER_IDS` restricts message commands to these accounts- leave the list empty if you want to allow *any* user to send commands. `self.COMMAND_CHANNEL_IDS` are the channels where you can send message commands to control your accounts remotely. `self.DROP_CHANNEL_IDS` is a list of channels where the script will drop cards. **There must be 1 drop channel per 3 accounts used.**
 8. Input accounts into the script. You can accomplish this via two ways:
     1. Enter your emails and passwords in `self.ACCOUNTS` in `token_extractor.py` using the following format, and then run `token_extractor.py`.
         ```python
@@ -39,7 +39,7 @@ pip install -r requirements.txt
 9. Run `main.py`.
 
 > [!TIP]
-> For the script to auto-grab all dropped cards, the number of accounts you input must be a **multiple of 3** (3 accounts will *work together* in each drop channel). Make sure no accounts have 2FA enabled, and all accounts should have message access in all of `self.COMMAND_CHANNEL_ID` and `self.DROP_CHANNEL_IDS` in `config.py`.
+> For the script to auto-grab all dropped cards, the number of accounts you input must be a **multiple of 3** (3 accounts will *work together* in each drop channel). Make sure no accounts have 2FA enabled, and all accounts should have message access in all of `self.COMMAND_CHANNEL_IDS` and `self.DROP_CHANNEL_IDS` in `config.py`.
 
 
 ## Warnings
@@ -51,8 +51,8 @@ pip install -r requirements.txt
 ## Usage Tips/Features
 1. **Command Checker**
     - This script has a built-in command system that allows users to send messages, reactions, and button presses from any of the accounts in `tokens.json`.
-    - In `config.py`, `self.COMMAND_USER_IDS` restricts the users who will be allowed to use commands. You can also set `self.COMMAND_CHANNEL_ID` to an empty string to disable message commands entirely.
-    - To send a message from any account, manually send a message in the `self.COMMAND_CHANNEL_ID` channel using the following format (without angle brackets):
+    - In `config.py`, `self.COMMAND_USER_IDS` restricts the users who will be allowed to use commands. You can also set `self.COMMAND_CHANNEL_IDS` to an empty list to disable message commands entirely.
+    - To send a command from any account, manually send a message from a `self.COMMAND_USER_IDS` account in any `self.COMMAND_CHANNEL_IDS` channel using the following format (without angle brackets):
         ```bash
         cmd <account_number |OR| account_number_range |OR| 'all'> <message>
         ```

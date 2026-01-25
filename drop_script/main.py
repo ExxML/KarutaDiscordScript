@@ -136,14 +136,14 @@ class DropScript():
         try:
             if not all([
                 all(id.isdigit() for id in self.COMMAND_USER_IDS),
-                (self.COMMAND_CHANNEL_ID == "" or self.COMMAND_CHANNEL_ID.isdigit()),
+                (self.COMMAND_CHANNEL_IDS == [] or all(id.isdigit() for id in self.COMMAND_CHANNEL_IDS)),
                 all(id.isdigit() for id in self.DROP_CHANNEL_IDS),
                 all(id.isdigit() for id in self.SERVER_ACTIVITY_DROP_CHANNEL_IDS)
             ]):
-                input("⛔ Configuration Error ⛔\nPlease enter non-empty, numeric strings for the command user ID(s), command channel ID, and (server activity) drop channel ID(s) in config.py.")
+                input("⛔ Configuration Error ⛔\nPlease enter non-empty, numeric strings for the command user ID(s), command channel IDs (or leave empty), and (server activity) drop channel ID(s) in config.py.")
                 sys.exit()
         except AttributeError:
-            input("⛔ Configuration Error ⛔\nPlease enter strings (not integers) for the command user ID(s), command channel ID, and (server activity) drop channel ID(s) in config.py.")
+            input("⛔ Configuration Error ⛔\nPlease enter strings (not integers) for the command user ID(s), command channel IDs (or leave empty), and (server activity) drop channel ID(s) in config.py.")
             sys.exit()
         if not all([
             isinstance(self.TERMINAL_VISIBILITY, int),
@@ -363,24 +363,25 @@ class DropScript():
                         print(f"❌ [Account #{account}] React {emoji} failed: Error code {status}.")
 
     async def run_command_checker(self):
-        if self.COMMAND_CHANNEL_ID:  # If command channel id field is not empty
-            command_checker = CommandChecker(
-                main = self,
-                tokens = self.tokens,
-                command_user_ids = self.COMMAND_USER_IDS,
-                command_channel_id = self.COMMAND_CHANNEL_ID,
-                karuta_prefix = self.KARUTA_PREFIX,
-                karuta_bot_id = self.KARUTA_BOT_ID,
-                karuta_drop_message = self.KARUTA_DROP_MESSAGE,
-                karuta_expired_drop_message = self.KARUTA_EXPIRED_DROP_MESSAGE,
-                karuta_card_transfer_title = self.KARUTA_CARD_TRANSFER_TITLE,
-                karuta_multitrade_lock_message = self.KARUTA_MULTITRADE_LOCK_MESSAGE,
-                karuta_multitrade_confirm_message = self.KARUTA_MULTITRADE_CONFIRM_MESSAGE,
-                karuta_multiburn_title = self.KARUTA_MULTIBURN_TITLE,
-                rate_limit = self.RATE_LIMIT
-            )
-            asyncio.create_task(command_checker.run())
-            print("\n🤖 Message commands enabled.")
+        if self.COMMAND_CHANNEL_IDS:
+            for channel_id in self.COMMAND_CHANNEL_IDS:
+                command_checker = CommandChecker(
+                    main = self,
+                    tokens = self.tokens,
+                    command_user_ids = self.COMMAND_USER_IDS,
+                    command_channel_id = channel_id,
+                    karuta_prefix = self.KARUTA_PREFIX,
+                    karuta_bot_id = self.KARUTA_BOT_ID,
+                    karuta_drop_message = self.KARUTA_DROP_MESSAGE,
+                    karuta_expired_drop_message = self.KARUTA_EXPIRED_DROP_MESSAGE,
+                    karuta_card_transfer_title = self.KARUTA_CARD_TRANSFER_TITLE,
+                    karuta_multitrade_lock_message = self.KARUTA_MULTITRADE_LOCK_MESSAGE,
+                    karuta_multitrade_confirm_message = self.KARUTA_MULTITRADE_CONFIRM_MESSAGE,
+                    karuta_multiburn_title = self.KARUTA_MULTIBURN_TITLE,
+                    rate_limit = self.RATE_LIMIT
+                )
+                asyncio.create_task(command_checker.run())
+            print(f"\n🤖 Message commands enabled in {len(self.COMMAND_CHANNEL_IDS)} channels.")
         else:
             print("\n🤖 Message commands disabled.")
 
@@ -589,8 +590,8 @@ class DropScript():
                         print(f"✅ [Account #{self.tokens.index(token) + 1}] Skipped drop.")
                     await self.pause_event.wait()  # Check if need to pause
                     if self.DROP_FAIL_LIMIT >= 0 and self.drop_fail_count >= self.DROP_FAIL_LIMIT:  # If FAIL_LIMIT == -1 (or any neg num), never pause
-                        if self.COMMAND_CHANNEL_ID:
-                            await self.send_message(token, self.tokens.index(token) + 1, self.COMMAND_CHANNEL_ID, "⚠️ Drop fail limit reached", 0)
+                        if self.COMMAND_CHANNEL_IDS:
+                            await self.send_message(token, self.tokens.index(token) + 1, self.COMMAND_CHANNEL_IDS[0], "⚠️ Drop fail limit reached", 0)
                         if self.TERMINAL_VISIBILITY:
                             await self.async_input_handler(f"\n⚠️ Drop Fail Limit Reached ⚠️\nThe script has failed to retrieve {self.DROP_FAIL_LIMIT} total drops. Automatically pausing drops...\nPress `Enter` if you wish to resume.\n",
                                                                             "", self.DROP_FAIL_LIMIT_REACHED_FLAG)
@@ -664,22 +665,22 @@ class DropScript():
                     print(f"  - Account #{self.tokens.index(token) + 1}")
                 task_instances.append(asyncio.create_task(self.run_instance(channel_num, channel_id, start_delay_seconds, channel_tokens.copy(), channel_time_limit_seconds)))
         await asyncio.sleep(3)  # Short delay to show user the account/channel information
-        if self.COMMAND_CHANNEL_ID:
+        if self.COMMAND_CHANNEL_IDS:
             random_token = random.choice(self.tokens)
             print(f"\n{datetime.now().strftime('%I:%M:%S %p').lstrip('0')}")
-            await self.send_message(random_token, self.tokens.index(random_token) + 1, self.COMMAND_CHANNEL_ID, "Execution started", 0)
+            await self.send_message(random_token, self.tokens.index(random_token) + 1, self.COMMAND_CHANNEL_IDS[0], "Execution started", 0)
         await asyncio.gather(*task_instances)
         await asyncio.sleep(1)
-        if self.COMMAND_CHANNEL_ID:
+        if self.COMMAND_CHANNEL_IDS:
             random_token = random.choice(self.tokens)
-            await self.send_message(random_token, self.tokens.index(random_token) + 1, self.COMMAND_CHANNEL_ID, "Execution completed", 0)
+            await self.send_message(random_token, self.tokens.index(random_token) + 1, self.COMMAND_CHANNEL_IDS[0], "Execution completed", 0)
         if self.TERMINAL_VISIBILITY:
             print(f"\n{datetime.now().strftime('%I:%M:%S %p').lstrip('0')}")
             await self.async_input_handler(f"✅ Script Execution Completed ✅\nClose the terminal to exit, or press `Enter` to restart the script.\n", "", self.EXECUTION_COMPLETED_FLAG)
 
     async def cleanup(self):
         random_token = random.choice(self.tokens)
-        await self.send_message(random_token, self.tokens.index(random_token) + 1, self.COMMAND_CHANNEL_ID, "Shutting down...", 0)
+        await self.send_message(random_token, self.tokens.index(random_token) + 1, self.COMMAND_CHANNEL_IDS[0], "Shutting down...", 0)
 
     def signal_handler(self, signum, frame):
         print("\n✅ Terminal window closed. Running cleanup...")
@@ -707,7 +708,7 @@ if __name__ == "__main__":
     bot.tokens = TokenExtractor().main(standalone = False, num_channels = len(bot.DROP_CHANNEL_IDS))
     
     # Set up signal handlers to send a message on terminal window closure
-    if bot.COMMAND_CHANNEL_ID:
+    if bot.COMMAND_CHANNEL_IDS:
         signal.signal(signal.SIGTERM, bot.signal_handler)
         signal.signal(signal.SIGINT, bot.signal_handler)
     

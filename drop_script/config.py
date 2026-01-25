@@ -5,8 +5,10 @@ class Config():
         self.COMMAND_USER_IDS = [
             "",
         ]
-        # Enter your command channel (where commands can be sent) as a string. Leave the strings empty to disable message commands.
-        self.COMMAND_CHANNEL_ID = ""
+        # Enter your command channels (where commands are allowed to be sent) as a list of strings. Leave the list empty to disable message commands.
+        self.COMMAND_CHANNEL_IDS = [
+            "",
+        ]
         # Enter your drop channels as a list of strings.
         self.DROP_CHANNEL_IDS = [
             "",
