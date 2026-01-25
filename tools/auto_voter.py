@@ -1,17 +1,19 @@
-import undetected_chromedriver as uc  # MUST use undetected_chromedriver to bypass Cloudflare bot detection
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import WebDriverException
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.common.by import By
+import undetected_chromedriver as uc  # MUST use undetected_chromedriver to bypass Cloudflare bot detection
+from auto_worker import AutoWorker
 from datetime import datetime
 import traceback
-import ctypes
-import sys
-import json
-import time
 import random
+import asyncio
+import ctypes
 import signal
 import atexit
+import time
+import json
+import sys
 
 ### TO USE THE AUTO-VOTER, YOU MUST HAVE A LIST OF TOKEN(S) in tokens.json. You cannot use account logins. ###
 class AutoVoter():
@@ -19,7 +21,8 @@ class AutoVoter():
         ### Feel free to customize these settings ###
         self.RAND_DELAY_MIN = 10  # (int) Minimum amount of minutes to wait between votes
         self.RAND_DELAY_MAX = 20  # (int) Maximum amount of minutes to wait between votes
-        self.SHUFFLE_ACCOUNTS = True  # (bool) Whether to randomize the order of accounts when voting. Generally, I would recommend keeping this setting `True`
+        self.SHUFFLE_ACCOUNTS = True  # (bool) Whether to randomize the order of accounts when voting. I recommend keeping this setting `True`
+        self.ENABLE_WORKING = True  # (bool) Whether to do k!work when voting
 
         self.driver = None
         atexit.register(self.cleanup)
@@ -36,6 +39,17 @@ class AutoVoter():
             sys.exit()
         elif self.TOKENS == ["exampleToken1", "exampleToken2", "exampleToken3", "..."]:
             input('⛔ Token Format Error ⛔\nPlease replace the example tokens in tokens.json with your real tokens.')
+            sys.exit()
+
+        if self.TOKENS:
+            if self.SHUFFLE_ACCOUNTS:
+                self.tokens = random.sample(self.TOKENS, len(self.TOKENS))
+                print("ℹ️ Accounts will vote in a randomized order.\n")
+            else:
+                self.tokens = self.TOKENS
+                print("ℹ️ Accounts will vote in order.\n")
+        else:
+            input("⛔ Token Error ⛔\nNo tokens found. Please enter at least 1 token to vote/work with in tokens.json.")
             sys.exit()
 
         self.WINDOWS_VERSIONS = ["10.0", "11.0"]
@@ -98,7 +112,7 @@ class AutoVoter():
         except:
             return False
 
-    def auto_vote(self, account_idx: int):
+    def auto_vote(self, token: str):
         try:
             max_attempts = 10
             for attempt in range(max_attempts):
@@ -118,7 +132,7 @@ class AutoVoter():
                     break
                 except Exception as e:
                     if attempt >= max_attempts - 1:
-                        print(f"  ❌ Error with Acccount #{self.TOKENS.index(self.tokens[account_idx]) + 1}:\n{e}")
+                        print(f"  ❌ Error with Acccount #{self.TOKENS.index(token) + 1}:\n{e}")
                         return
                     if self.driver:
                         self.driver.quit()
@@ -129,7 +143,7 @@ class AutoVoter():
             print("  Opened Discord")
 
             inject_token_script = f"""
-                let token = "{self.tokens[account_idx]}";
+                let token = "{token}";
                 function login(token) {{
                     setInterval(() => {{
                         document.body.appendChild(document.createElement('iframe')).contentWindow.localStorage.token = `"${{token}}"`;
@@ -213,9 +227,21 @@ class AutoVoter():
                 print("  ❌ Unexpected result after clicking vote")
 
         except Exception as e:
-            print(f"  ❌ Error with Acccount #{self.TOKENS.index(self.tokens[account_idx]) + 1}:\n{e}")
+            print(f"  ❌ Error with Acccount #{self.TOKENS.index(token) + 1}:\n{e}")
             traceback.print_exc()
     
+    def vote_setup(self, token: str, account: int):
+        print("Loading new Undetected Chrome instance...")
+        try:
+            self.load_chrome()
+        except Exception:
+            input("⛔ Chrome Error ⛔\nChrome failed to open. Please ensure your Google Chrome is up-to-date.")
+            sys.exit()
+        print(f"Auto-voting on Account #{self.TOKENS.index(token) + 1} ({account}/{len(self.tokens)})...")
+        self.auto_vote(token)
+        print("Closing Chrome...")
+        self.driver.quit()
+
     def cleanup(self, *args):
         if self.driver:
             try:
@@ -224,31 +250,36 @@ class AutoVoter():
                 pass
             
     def main(self):
-        if self.TOKENS:
-            if self.SHUFFLE_ACCOUNTS:
-                self.tokens = random.sample(self.TOKENS, len(self.TOKENS))
-                print("ℹ️ Accounts will vote in a randomized order.\n")
-            else:
-                self.tokens = self.TOKENS
-                print("ℹ️ Accounts will vote in order.\n")
-        else:
-            input("⛔ Token Error ⛔\nNo tokens found. Please enter at least 1 token to vote with in tokens.json.")
-            sys.exit()
+        # If enabled working with voting
+        if self.ENABLE_WORKING:
+            self.auto_worker = AutoWorker()
 
         # Executes with tokens
         for account_idx in range(len(self.tokens)):
             print(f"{datetime.now().strftime('%I:%M:%S %p').lstrip('0')}")
-            print("Loading new Undetected Chrome instance...")
-            self.load_chrome()
-            print(f"Auto-voting on Account #{self.TOKENS.index(self.tokens[account_idx]) + 1} ({account_idx + 1}/{len(self.tokens)})...")
-            self.auto_vote(account_idx)
-            print("Closing Chrome...")
-            self.driver.quit()
+
+            token = self.tokens[account_idx]
+            if self.ENABLE_WORKING:
+                if random.choice([True, False]):  # 50% chance of working before and after voting
+                    asyncio.run(self.auto_worker.auto_work(token, account_idx + 1))
+                    delay = random.uniform(10, 120)  # Random delay
+                    print(f"\nWaiting {round(delay)} seconds before voting...\n")
+                    time.sleep(delay)
+                    self.vote_setup(token, account_idx + 1)
+                else:
+                    self.vote_setup(token, account_idx + 1)
+                    delay = random.uniform(10, 120)  # Random delay
+                    print(f"\nWaiting {round(delay)} seconds before working...\n")
+                    time.sleep(delay)
+                    asyncio.run(self.auto_worker.auto_work(token, account_idx + 1))
+            else:
+                self.vote_setup(token, account_idx + 1)
+
             delay = random.uniform(self.RAND_DELAY_MIN, self.RAND_DELAY_MAX) * 60  # Random delay between votes
-            print(f"Waiting {round(delay / 60)} minutes before voting on another account...\n")
+            print(f"Waiting {round(delay / 60)} minutes before running on another account...\n")
             time.sleep(delay)
 
-        input("✅ All accounts have been voted on. Press `Enter` to exit.")
+        input("✅ All accounts have been executed. Press `Enter` to exit.")
         sys.exit()
 
 if __name__ == "__main__":
