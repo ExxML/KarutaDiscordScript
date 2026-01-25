@@ -1,11 +1,8 @@
-from datetime import datetime
 import random
 import asyncio
 import aiohttp
 import base64
-import ctypes
 import uuid
-import time
 import json
 import sys
 import os
@@ -15,35 +12,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 from drop_script.config import Config
 
 class AutoWorker():
-    def __init__(self):
-        ### Feel free to customize these settings ###
-        self.RAND_DELAY_MIN = 10  # (int) Minimum amount of minutes to wait between works
-        self.RAND_DELAY_MAX = 20  # (int) Maximum amount of minutes to wait between works
-        self.SHUFFLE_ACCOUNTS = True  # (bool) Whether to randomize the order of accounts when working. I recommend keeping this setting `True`
-        
-        try:
-            with open("tokens/tokens.json", "r") as tokens_file:
-                self.TOKENS = json.load(tokens_file)
-        except (FileNotFoundError, json.JSONDecodeError):
-            self.TOKENS = []
-        if not isinstance(self.TOKENS, list) or not all(isinstance(token, str) for token in self.TOKENS):
-            input('⛔ Token Format Error ⛔\nExpected a list of strings. Example: ["exampleToken1", "exampleToken2", "exampleToken3"]')
-            sys.exit()
-        elif self.TOKENS == ["exampleToken1", "exampleToken2", "exampleToken3", "..."]:
-            input('⛔ Token Format Error ⛔\nPlease replace the example tokens in tokens.json with your real tokens.')
-            sys.exit()
-
-        if self.TOKENS:
-            if self.SHUFFLE_ACCOUNTS:
-                self.tokens = random.sample(self.TOKENS, len(self.TOKENS))
-                print("ℹ️ Accounts will work in a randomized order.\n")
-            else:
-                self.tokens = self.TOKENS
-                print("ℹ️ Accounts will work in order.\n")
-        else:
-            input("⛔ Token Error ⛔\nNo tokens found. Please enter at least 1 token for working in tokens.json.")
-            sys.exit()
-
+    def __init__(self, unshuffled_tokens: list[str], tokens: list[str], windows_versions: list[str], browser_versions: list[str]):
         self.config = Config()
         self.WORK_CHANNEL_IDS = self.config.DROP_CHANNEL_IDS
         if not self.WORK_CHANNEL_IDS or not all(id.isdigit() for id in self.WORK_CHANNEL_IDS):
@@ -51,30 +20,20 @@ class AutoWorker():
                     "\nThese channels are where the accounts will send work commands.")
             sys.exit()
         
+        self.RATE_LIMIT = 3
         self.KARUTA_BOT_ID = "646937666251915264"
         self.KARUTA_PREFIX = self.config.KARUTA_PREFIX
-        self.WINDOWS_VERSIONS = ["10.0", "11.0"]
-        self.BROWSER_VERSIONS = [
-            "114.0.5735.198", "115.0.5790.170", "115.0.5790.114", "116.0.5845.111", 
-            "116.0.5845.97", "117.0.5938.149", "117.0.5938.132", "117.0.5938.62", 
-            "118.0.5993.117", "118.0.5993.90", "118.0.5993.88", "119.0.6045.160", 
-            "119.0.6045.123", "119.0.6045.105", "120.0.6099.224", "120.0.6099.110", 
-            "120.0.6099.72", "121.0.6167.184", "121.0.6167.139", "121.0.6167.85", 
-            "122.0.6261.174", "122.0.6261.128", "122.0.6261.111", "122.0.6261.95", 
-            "123.0.6312.122", "123.0.6312.106", "123.0.6312.87", "123.0.6312.86", 
-            "124.0.6367.207", "124.0.6367.112", "124.0.6367.91", "124.0.6367.91", 
-            "125.0.6422.113", "125.0.6422.112", "125.0.6422.76", "125.0.6422.60", 
-            "126.0.6478.127", "126.0.6478.93", "126.0.6478.61", "126.0.6478.57", 
-            "127.0.6533.112", "127.0.6533.77"
-        ]
-        self.RATE_LIMIT = 3
-
         self.KARUTA_NODES_OVERVIEW_TITLE = "Nodes Overview"
         self.KARUTA_WORK_TITLE = "Work"
         self.KARUTA_WORK_FINISHED_MESSAGE = "Your workers have finished their tasks."
         self.KARUTA_WORK_INJURED_MESSAGE = "The following workers have been injured:"
         self.KARUTA_NO_PERMIT_MESSAGE = ", you do not have a permit to work. You can purchase one with the `k!buy work permit` command, then activate it with `k!use work permit`."
         self.KARUTA_WORK_CD_MESSAGE = "before working again."
+
+        self.TOKENS = unshuffled_tokens
+        self.tokens = tokens
+        self.WINDOWS_VERSIONS = windows_versions
+        self.BROWSER_VERSIONS = browser_versions
 
     def get_headers(self, token: str, channel_id: str):
         windows_version = random.choice(self.WINDOWS_VERSIONS)
@@ -308,26 +267,3 @@ class AutoWorker():
                             work_msg = await self.get_karuta_message(token, account_num, random_work_channel_id, self.KARUTA_WORK_TITLE, 0)
                             user_id = await self.get_user_id(token, random_work_channel_id)
                             self.confirm_work_complete(account_num, user_id, work_msg)
-        return
-
-    def main(self):
-        # Executes with tokens
-        for account_idx in range(len(self.tokens)):
-            print(f"{datetime.now().strftime('%I:%M:%S %p').lstrip('0')}")
-            token = self.tokens[account_idx]
-            asyncio.run(self.auto_work(token, account_idx + 1))
-            delay = random.uniform(self.RAND_DELAY_MIN, self.RAND_DELAY_MAX) * 60  # Random delay between works
-            print(f"Waiting {round(delay / 60)} minutes before working on another account...\n")
-            time.sleep(delay)
-
-        input("✅ All accounts have worked. Press `Enter` to exit.")
-        sys.exit()
-
-if __name__ == "__main__":
-    RELAUNCH_FLAG = "--no-relaunch"
-    if RELAUNCH_FLAG not in sys.argv:
-        ctypes.windll.shell32.ShellExecuteW(
-            None, None, sys.executable, " ".join(sys.argv + [RELAUNCH_FLAG]), None, 1  # 0 = hidden, 1 = visible (recommended)
-        )
-        sys.exit()
-    AutoWorker().main()

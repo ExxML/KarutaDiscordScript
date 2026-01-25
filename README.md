@@ -83,11 +83,18 @@ pip install -r requirements.txt
 - The `/b` command can also be used on any bot buttons, not just Karuta. The list of allowed bots is set in `self.INTERACTION_BOT_IDS` in `command_checker.py`, which includes OwO by default.
 
 
-## Top.gg Auto-Voter
-### Usage
+## Auto-Runner Tool
+A separate script from the drop script above that automatically votes/works on all the accounts.
 1. Follow the Setup steps above to obtain a list of tokens in `tokens.json`, or manually paste your tokens in a list.
-2. Ensure your Chrome browser is up-to-date.
-3. **DO NOT** use a VPN while running this script. Cloudflare (the service Top.gg uses) flags VPNs.
-4. If you wish, edit `self.RAND_DELAY_MIN` and `self.RAND_DELAY_MAX` to change the (randomized) amount of time between votes.
-5. You may also edit `self.SHUFFLE_ACCOUNTS` depending on whether you want to randomize the order of accounts for voting. Generally, I would recommend keeping this setting `True`.
-6. Run `auto_voter.py`.
+2. Follow the Setup steps below for the Auto-Voter and Auto-Worker.
+3. Run `auto_runner.py`.
+- If you wish, edit `self.RAND_DELAY_MIN` and `self.RAND_DELAY_MAX` to change the (randomized) time between votes/works.
+- You may also edit `self.SHUFFLE_ACCOUNTS` depending on whether you want to randomize the order of accounts for voting/working. Generally, I would recommend keeping this setting `True`.
+
+### Top.gg Auto-Voter Setup
+1. Ensure your Chrome browser is up-to-date.
+2. **DO NOT** use a VPN while running this script. Cloudflare (the service Top.gg uses) flags VPNs.
+
+### Auto-Worker Setup
+1. Set up work permits and job boards on all the acccounts.
+2. Ensure you have listed at least one drop channel in `config.py`. A channel in `self.DROP_CHANNEL_IDS` will be randomly selected to work in for every account.
