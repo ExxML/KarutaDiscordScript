@@ -21,7 +21,7 @@ class CommandChecker():
         self.RATE_LIMIT = rate_limit
 
         self.MESSAGE_COMMAND_PREFIX = "cmd"
-        self.INTERACTION_BOT_IDS = [self.KARUTA_BOT_ID, "408785106942164992"]  # List of bot IDs to look for when pressing buttons or sending reactions (i.e. OwO)
+        self.INTERACTION_BOT_IDS = [self.KARUTA_BOT_ID, "408785106942164992"]  # List of bot IDs to look for when sending button or reaction commands (i.e. OwO)
         self.ALL_ACCOUNT_FLAG = "all"
         self.INTERACTION_URL = "https://discord.com/api/v10/interactions"
         self.KARUTA_LOCK_COMMAND = "/lock"
