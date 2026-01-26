@@ -55,6 +55,7 @@ class CommandChecker():
     async def get_karuta_message(self, token: str, account: int, channel_id: str, search_content: str, rate_limited: int):
         url = f"https://discord.com/api/v10/channels/{channel_id}/messages?limit=50"
         headers = self.main.get_headers(token, channel_id)
+        user_id = await self.get_user_id(token, channel_id)
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers = headers) as resp:
                 status = resp.status
@@ -63,7 +64,7 @@ class CommandChecker():
                     try:
                         for msg in messages:
                             referenced_author_id = msg.get('referenced_message', {}).get('author', {}).get('id')  # Get the user ID of the user being replied to
-                            if msg.get('author', {}).get('id') == self.KARUTA_BOT_ID and referenced_author_id == await self.get_user_id(token, channel_id):
+                            if msg.get('author', {}).get('id') == self.KARUTA_BOT_ID and user_id == referenced_author_id:
                                 if search_content == self.KARUTA_CARD_TRANSFER_TITLE and msg.get('embeds') and self.KARUTA_CARD_TRANSFER_TITLE == msg['embeds'][0].get('title'):
                                     print(f"✅ [Account #{account}] Retrieved card transfer message.")
                                     return msg
