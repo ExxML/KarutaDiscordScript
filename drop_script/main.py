@@ -3,19 +3,20 @@ from token_extractor import TokenExtractor
 from config import Config
 from datetime import datetime, timedelta
 from collections import defaultdict
-import win32gui
-import win32con
+from textwrap import dedent
 import win32console
-import aiohttp
-import asyncio
-import base64
-import json
+import win32con
+import win32gui
 import random
-import sys
+import asyncio
+import aiohttp
+import base64
 import ctypes
+import signal
 import math
 import time
-import signal
+import json
+import sys
 
 class DropScript():
     def __init__(self):
@@ -220,14 +221,19 @@ class DropScript():
             }
         return self.token_headers[token]
 
-    async def get_drop_message(self, token: str, account: int, channel_id: str, wait_for_emoji: bool):
-        url = f"https://discord.com/api/v10/channels/{channel_id}/messages?limit=5"
+    async def get_user_id(self, token: str, channel_id: str):
         headers = self.get_headers(token, channel_id)
         user_id = None
         async with aiohttp.ClientSession() as session:
             async with session.get("https://discord.com/api/v10/users/@me", headers = headers) as resp:
                 if resp.status == 200:
                     user_id = (await resp.json()).get('id')
+        return user_id
+
+    async def get_drop_message(self, token: str, account: int, channel_id: str, special_event: bool):
+        url = f"https://discord.com/api/v10/channels/{channel_id}/messages?limit=5"
+        headers = self.get_headers(token, channel_id)
+        user_id = await self.get_user_id(token, channel_id)
         on_cooldown = False
         timeout = 30  # seconds
         start_time = time.monotonic()
@@ -243,21 +249,18 @@ class DropScript():
                                 if all([
                                     msg.get('author', {}).get('id') == self.KARUTA_BOT_ID,
                                     len(reactions) >= 3,
-                                    self.KARUTA_DROP_MESSAGE in msg.get('content', ''),
+                                    f"<@{user_id}> {self.KARUTA_DROP_MESSAGE}" in msg.get('content', ''),
                                     self.KARUTA_EXPIRED_DROP_MESSAGE not in msg.get('content', '')
                                 ]):
-                                    if self.SPECIAL_EVENT and self.special_event_token and wait_for_emoji:  # If special event, wait an additional 2-3s to watch for the special event emoji
-                                        await asyncio.sleep(random.uniform(2, 3))
-                                        wait_for_emoji = False
-                                        continue
-                                    print(f"✅ [Account #{account}] Retrieved drop message.")
+                                    if special_event:
+                                        print(f"✅ [Account #{account}] Retrieved drop message (watching special event).")
+                                    else:
+                                        print(f"✅ [Account #{account}] Retrieved drop message.")
                                     return msg
-                                elif msg.get('author', {}).get('id') == self.KARUTA_BOT_ID and user_id and f"<@{user_id}>{self.KARUTA_DROP_COOLDOWN_MESSAGE}" in msg.get('content', ''):
+                                elif msg.get('author', {}).get('id') == self.KARUTA_BOT_ID and f"<@{user_id}>{self.KARUTA_DROP_COOLDOWN_MESSAGE}" in msg.get('content', ''):
                                     on_cooldown = True
                         except (KeyError, IndexError):
                             pass
-                        if not wait_for_emoji:
-                            continue
                         if on_cooldown:
                             print(f"ℹ️ [Account #{account}] Retrieve drop message failed: Drop is on cooldown.")
                             return None
@@ -303,6 +306,32 @@ class DropScript():
                     print(f"❌ [Account #{account}] Send message '{content}' failed: Error code {status}.")
                 return status == 200
 
+    async def get_card_companion_pog_card(self, token: str, account: int, channel_id: str, drop_message_id: str):
+        url = f"https://discord.com/api/v10/channels/{channel_id}/messages?limit=10"
+        headers = self.get_headers(token, channel_id)
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers = headers) as resp:
+                status = resp.status
+                if status == 200:
+                    messages = await resp.json()
+                    try:
+                        for msg in messages:
+                            if all([
+                                msg.get('author', {}).get('id') == self.CARD_COMPANION_BOT_ID,
+                                msg.get('id') > drop_message_id,  # Ensure CardCompanion message is after the drop message
+                                any(emoji_str in msg.get('content', '') for emoji_str in self.CARD_COMPANION_POG_EMOJIS)  # Check if message contains an emoji indicating a pog card
+                            ]):
+                                card_number = int(msg.get('content')[5])  # The fifth index is the card number of the pog card
+                                print(f"✅ [Account #{account}] Identified CardCompanion pog card: [{card_number}].")
+                                return card_number
+                    except (KeyError, IndexError):
+                        pass
+                else:
+                    print(f"❌ [Account #{account}] Retrieve CardCompanion message failed: Error code {status}.")
+                    return None
+                # In the case CardCompanion does not return a message containing a pog card, return None
+                return None
+
     async def add_reaction(self, token: str, account: int, channel_id: str, message_id: str, emoji: str, rate_limited: int):
         url = f"https://discord.com/api/v10/channels/{channel_id}/messages/{message_id}/reactions/{emoji}/@me"
         headers = self.get_headers(token, channel_id)
@@ -325,7 +354,7 @@ class DropScript():
                         await self.add_reaction(token, account, channel_id, message_id, emoji, rate_limited)
                     else:
                         print(f"❌ [Account #{account}] Grab card {card_number} failed: Error code {status}.")
-                elif account == 0 and self.SPECIAL_EVENT and self.special_event_token:  # when reacting for special event emoji
+                elif account == 0 and self.SPECIAL_EVENT and self.special_event_tokens_dict:  # when reacting with special event emoji
                     if channel_id in self.DROP_CHANNEL_IDS:
                         channel_name = f"Drop Channel #{self.DROP_CHANNEL_IDS.index(channel_id) + 1}"
                     elif channel_id in self.SERVER_ACTIVITY_DROP_CHANNEL_IDS:
@@ -372,8 +401,6 @@ class DropScript():
                     command_channel_id = channel_id,
                     karuta_prefix = self.KARUTA_PREFIX,
                     karuta_bot_id = self.KARUTA_BOT_ID,
-                    karuta_drop_message = self.KARUTA_DROP_MESSAGE,
-                    karuta_expired_drop_message = self.KARUTA_EXPIRED_DROP_MESSAGE,
                     karuta_card_transfer_title = self.KARUTA_CARD_TRANSFER_TITLE,
                     karuta_multitrade_lock_message = self.KARUTA_MULTITRADE_LOCK_MESSAGE,
                     karuta_multitrade_confirm_message = self.KARUTA_MULTITRADE_CONFIRM_MESSAGE,
@@ -381,43 +408,54 @@ class DropScript():
                     rate_limit = self.RATE_LIMIT
                 )
                 asyncio.create_task(command_checker.run())
-            print(f"\n🤖 Message commands enabled in {len(self.COMMAND_CHANNEL_IDS)} channels.")
+            print(f"\n🤖 Message commands are enabled in {len(self.COMMAND_CHANNEL_IDS)} channel(s).")
         else:
-            print("\n🤖 Message commands disabled.")
+            print("\n🤖 Message commands are disabled.")
+
+    async def add_special_event_reaction(self, channel_id: str, message: dict):
+        try:
+            msg_id = message.get('id')
+            special_event_emoji = message.get('reactions', [])[-1].get('emoji', {}).get('name')  # Get the last (usually 4th) emoji (the event emoji)
+            if special_event_emoji in self.special_event_tokens_dict:
+                token = self.special_event_tokens_dict.get(special_event_emoji)
+            else:
+                token = self.special_event_tokens_dict.get("any", "")
+                if not token:  # If there is no token found for "any", return
+                    return
+            await self.add_reaction(token, 0, channel_id, msg_id, special_event_emoji, 0)  # 0 as account stub
+        except KeyError:
+            print(f"❌ [Special Event Account] Retrieve message failed: KeyError.")
+            pass
+        except IndexError:
+            print(f"❌ [Special Event Account] Retrieve message failed: IndexError.")
+            pass
 
     async def run_special_event_checker(self):
         reacted_message_ids = set()
+        special_event_tokens = list(self.special_event_tokens_dict.values())
         while True:
             try:
-                for server_activity_drop_channel_id in self.SERVER_ACTIVITY_DROP_CHANNEL_IDS:
-                    url = f"https://discord.com/api/v10/channels/{server_activity_drop_channel_id}/messages?limit=20"
-                    headers = self.get_headers(self.special_event_token, server_activity_drop_channel_id)
+                for channel_id in self.SERVER_ACTIVITY_DROP_CHANNEL_IDS:
+                    url = f"https://discord.com/api/v10/channels/{channel_id}/messages?limit=20"
+                    headers = self.get_headers(random.choice(special_event_tokens), channel_id)
                     async with aiohttp.ClientSession() as session:
                         async with session.get(url, headers = headers) as resp:
                             status = resp.status
                             if status == 200:
                                 messages = await resp.json()
-                                try:
-                                    for msg in messages:
-                                        msg_id = msg.get('id')
-                                        if all([
-                                            msg_id not in reacted_message_ids,  # Ensure no duplicate reactions on one message
-                                            msg.get('author', {}).get('id') == self.KARUTA_BOT_ID,
-                                            len(msg.get('reactions', [])) > 3,  # 3 cards + 1 special event emoji
-                                            (self.KARUTA_DROP_MESSAGE in msg.get('content', '') or self.KARUTA_SERVER_ACTIVITY_DROP_MESSAGE in msg.get('content', '')),
-                                            self.KARUTA_EXPIRED_DROP_MESSAGE not in msg.get('content', '')
-                                        ]):
-                                            special_event_emoji = msg.get('reactions', [])[-1].get('emoji').get('name')  # Get the last (4th) emoji (the event emoji)
-                                            await self.add_reaction(self.special_event_token, 0, server_activity_drop_channel_id, msg_id, special_event_emoji, 0)  # 0 as account stub
-                                            reacted_message_ids.add(msg_id)
-                                except KeyError:
-                                    print(f"❌ [Special Event Account] Retrieve message failed: KeyError.")
-                                    pass
-                                except IndexError:
-                                    print(f"❌ [Special Event Account] Retrieve message failed: IndexError.")
-                                    pass
+                                for msg in messages:
+                                    msg_id = msg.get('id')
+                                    if all([
+                                        msg_id not in reacted_message_ids,  # Ensure no duplicate reactions on one message
+                                        msg.get('author', {}).get('id') == self.KARUTA_BOT_ID,
+                                        len(msg.get('reactions', [])) > 3,  # 3 cards + special event emoji(s)
+                                        (self.KARUTA_DROP_MESSAGE in msg.get('content', '') or self.KARUTA_SERVER_ACTIVITY_DROP_MESSAGE in msg.get('content', '')),
+                                        self.KARUTA_EXPIRED_DROP_MESSAGE not in msg.get('content', '')
+                                    ]):
+                                        await self.add_special_event_reaction(channel_id, msg)
+                                        reacted_message_ids.add(msg_id)
                             else:
-                                print(f"❌ [Special Event Account] Retrieve message failed: Error code {status}.")
+                                print(f"❌ [Special Event Account] Retrieve message failed: Error code {status}. {channel_id}")
                                 return None
             except Exception as e:
                 print(f"\n❌ Special Event Checker Failed ❌\n{e}")
@@ -433,38 +471,12 @@ class DropScript():
         for k, v in self.token_channel_dict.items():
             self.channel_token_dict[v].append(k)
 
-    async def get_card_companion_pog_card(self, token: str, account: int, channel_id: str, drop_message_id: str):
-        url = f"https://discord.com/api/v10/channels/{channel_id}/messages?limit=10"
-        headers = self.get_headers(token, channel_id)
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers = headers) as resp:
-                status = resp.status
-                if status == 200:
-                    messages = await resp.json()
-                    try:
-                        for msg in messages:
-                            if all([
-                                msg.get('author', {}).get('id') == self.CARD_COMPANION_BOT_ID,
-                                msg.get('id') > drop_message_id,  # Ensure CardCompanion message is after the drop message
-                                any(emoji_str in msg.get('content', '') for emoji_str in self.CARD_COMPANION_POG_EMOJIS)  # Check if message contains an emoji indicating a pog card
-                            ]):
-                                card_number = int(msg.get('content')[5])  # The fifth index is the card number of the pog card
-                                print(f"✅ [Account #{account}] Identified CardCompanion pog card: [{card_number}].")
-                                return card_number
-                    except (KeyError, IndexError):
-                        pass
-                else:
-                    print(f"❌ [Account #{account}] Retrieve CardCompanion message failed: Error code {status}.")
-                    return None
-                # In the case CardCompanion does not return a message containing a pog card, return None
-                return None
-
     async def drop_and_grab(self, token: str, account: int, channel_id: str, channel_tokens: list[str]):
         num_channel_tokens = len(channel_tokens)
         drop_message = random.choice(self.DROP_MESSAGES) + random.choice(self.RANDOM_ADDON)
         sent = await self.send_message(token, account, channel_id, drop_message, 0)
         if sent:
-            drop_message = await self.get_drop_message(token, account, channel_id, wait_for_emoji = True)
+            drop_message = await self.get_drop_message(token, account, channel_id, special_event = False)
             if drop_message:
                 drop_message_id = drop_message.get('id')
                 # Note that there is no need to wait for the CardCompanion message because get_drop_message() only returns after all Karuta emojis have been added, by which time CardCompanion should have already identified the drop
@@ -503,17 +515,11 @@ class DropScript():
                             await asyncio.sleep(random.uniform(0.5, 3.5))
                 
                 # Grab special event emoji on special event account
-                try:
-                    if self.SPECIAL_EVENT and self.special_event_token and len(drop_message.get('reactions', [])) > 3:  # 3 cards + 1 special event emoji
-                        await asyncio.sleep(random.uniform(0, 3))
-                        special_event_emoji = drop_message.get('reactions', [])[-1].get('emoji').get('name')  # Get the last (4th) emoji (the event emoji)
-                        await self.add_reaction(self.special_event_token, 0, channel_id, drop_message_id, special_event_emoji, 0)  # 0 as account stub
-                except KeyError:
-                    print(f"❌ [Special Event Account] Retrieve message failed: KeyError.")
-                    pass
-                except IndexError:
-                    print(f"❌ [Special Event Account] Retrieve message failed: IndexError.")
-                    pass
+                if self.SPECIAL_EVENT and self.special_event_tokens_dict:
+                    await asyncio.sleep(random.uniform(3, 4))
+                    drop_message = await self.get_drop_message(token, account, channel_id, special_event = True)
+                    if len(drop_message.get('reactions', [])) > 3:  # 3 cards + special event emoji(s)
+                        await self.add_special_event_reaction(channel_id, drop_message)
 
                 # If only grabbing pog cards, then only the dropper will ever be active
                 # Hence, non-droppers should never send random messages in the channel; only the dropper will
@@ -618,27 +624,54 @@ class DropScript():
         
         if self.SPECIAL_EVENT:
             try:
-                with open("tokens/special_event_token.json", "r") as special_event_token_file:
-                    self.special_event_token = json.load(special_event_token_file)
-                    if not isinstance(self.special_event_token, str):
-                        input('⛔ Special Event Token Error ⛔\nExpected a string. Example: "exampleSpecialEventToken"')
+                with open("tokens/special_event_tokens.json", "r", encoding = "utf-8") as special_event_tokens_file:
+                    self.special_event_tokens_dict = json.load(special_event_tokens_file)
+                    example_special_event_tokens_dict = {
+                        "any": "specialEventToken1",
+                        "🌼": "specialEventToken2",
+                    }
+                    if not (
+                        isinstance(self.special_event_tokens_dict, dict)
+                        and all(isinstance(k, str) and isinstance(v, str) for k, v in self.special_event_tokens_dict.items())
+                    ):
+                        input(
+                            '\n⛔ Special Event Token Error ⛔\nExpected a dictionary with string keys and values.\n' +
+                            dedent(
+                                """
+                                Example:
+                                {
+                                  "any": "specialEventToken1", <- This token will grab the emojis that the other accounts do not grab
+                                  "🌼": "specialEventToken2"   <- This token will exclusively grab the 🌼 emoji
+                                }"""
+                            )
+                        )
                         sys.exit()
-                    elif self.special_event_token == "":
-                        print("\n❌ Not watching for special event reactions (no token entered in special_event_token.json).")
-                    elif self.special_event_token == "exampleSpecialEventToken":
-                        print("\n❌ Not watching for special event reactions. Please replace the example token in special_event_token.json with a real token.")
+                    elif self.special_event_tokens_dict == {}:
+                        print("\n❌ Not watching for special event reactions (no token entered in special_event_tokens.json).")
+                    elif self.special_event_tokens_dict == example_special_event_tokens_dict:
+                        print("\n❌ Not watching for special event reactions. Please replace the example values in special_event_tokens.json with real tokens.")
                     else:
                         asyncio.create_task(self.run_special_event_checker())
                         print(f"\nℹ️ Watching for special event reactions in {len(self.DROP_CHANNEL_IDS)} script drop channel(s) " +
                                 f"and {len(self.SERVER_ACTIVITY_DROP_CHANNEL_IDS)} server activity drop channel(s).")
             except FileNotFoundError:
-                self.special_event_token = ""
-                print("\n❌ Not watching for special event reactions (no special_event_token.json file found).")
+                self.special_event_tokens_dict = {}
+                print("\n❌ Not watching for special event reactions (no special_event_tokens.json file found).")
             except json.JSONDecodeError:
-                input('⛔ Special Event Token Error ⛔\nExpected a string. Example: "exampleSpecialEventToken"')
+                input(
+                    '\n⛔ Special Event Token Error ⛔\nExpected a dictionary with string keys and values.\n' +
+                    dedent(
+                        """
+                        Example:
+                        {
+                            "any": "specialEventToken1", <- This token will grab the emojis that the other accounts do not grab
+                            "🌼": "specialEventToken2"   <- This token will exclusively grab the 🌼 emoji
+                        }"""
+                    )
+                )
                 sys.exit()
         else:
-            self.special_event_token = ""
+            self.special_event_tokens_dict = {}
 
         if self.ONLY_GRAB_POG_CARDS:
             print("\n❗ Only pog cards (as defined by CardCompanion) will be grabbed.")
