@@ -6,17 +6,14 @@ import aiohttp
 import uuid
 
 class CommandChecker():
-    def __init__(self, main, tokens: list[str], command_user_ids: list[str], command_channel_id: str, karuta_prefix: str, karuta_bot_id: str, karuta_drop_message: str, karuta_expired_drop_message: str, 
-                        karuta_card_transfer_title: str, karuta_multitrade_lock_message: str, karuta_multitrade_confirm_message: str, karuta_multiburn_title: str, rate_limit: int):
+    def __init__(self, main, tokens: list[str], command_user_ids: list[str], command_channel_id: str, karuta_prefix: str, karuta_bot_id: str, karuta_card_transfer_title: str, 
+                        karuta_multitrade_lock_message: str, karuta_multitrade_confirm_message: str, karuta_multiburn_title: str, rate_limit: int):
         self.main = main
         self.tokens = tokens
         self.COMMAND_USER_IDS = command_user_ids
         self.COMMAND_CHANNEL_ID = command_channel_id
         self.KARUTA_PREFIX = karuta_prefix
         self.KARUTA_BOT_ID = karuta_bot_id
-        self.INTERACTION_BOT_IDS = [self.KARUTA_BOT_ID, "408785106942164992"]  # List of bot IDs to look for when pressing buttons or sending reactions (i.e. OwO)
-        self.KARUTA_DROP_MESSAGE = karuta_drop_message
-        self.KARUTA_EXPIRED_DROP_MESSAGE = karuta_expired_drop_message
         self.KARUTA_CARD_TRANSFER_TITLE = karuta_card_transfer_title
         self.KARUTA_MULTITRADE_LOCK_MESSAGE = karuta_multitrade_lock_message
         self.KARUTA_MULTITRADE_CONFIRM_MESSAGE = karuta_multitrade_confirm_message
@@ -24,6 +21,7 @@ class CommandChecker():
         self.RATE_LIMIT = rate_limit
 
         self.MESSAGE_COMMAND_PREFIX = "cmd"
+        self.INTERACTION_BOT_IDS = [self.KARUTA_BOT_ID, "408785106942164992"]  # List of bot IDs to look for when pressing buttons or sending reactions (i.e. OwO)
         self.ALL_ACCOUNT_FLAG = "all"
         self.INTERACTION_URL = "https://discord.com/api/v10/interactions"
         self.KARUTA_LOCK_COMMAND = "/lock"
