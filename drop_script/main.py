@@ -1,9 +1,9 @@
+from special_event_grabber import SpecialEventGrabber
 from command_checker import CommandChecker
 from token_extractor import TokenExtractor
 from config import Config
 from datetime import datetime, timedelta
 from collections import defaultdict
-from textwrap import dedent
 import win32console
 import win32con
 import win32gui
@@ -354,7 +354,7 @@ class DropScript():
                         await self.add_reaction(token, account, channel_id, message_id, emoji, rate_limited)
                     else:
                         print(f"❌ [Account #{account}] Grab card {card_number} failed: Error code {status}.")
-                elif account == 0 and self.SPECIAL_EVENT and self.special_event_tokens_dict:  # when reacting with special event emoji
+                elif account == 0 and self.SPECIAL_EVENT:  # when reacting with special event emoji
                     if channel_id in self.DROP_CHANNEL_IDS:
                         channel_name = f"Drop Channel #{self.DROP_CHANNEL_IDS.index(channel_id) + 1}"
                     elif channel_id in self.SERVER_ACTIVITY_DROP_CHANNEL_IDS:
@@ -421,116 +421,6 @@ class DropScript():
         for k, v in self.token_channel_dict.items():
             self.channel_token_dict[v].append(k)
 
-    async def check_special_event(self):
-        if self.SPECIAL_EVENT:
-            try:
-                with open("tokens/special_event_tokens.json", "r", encoding = "utf-8") as special_event_tokens_file:
-                    self.special_event_tokens_dict = json.load(special_event_tokens_file)
-                    example_special_event_tokens_dict = {
-                        "any": "specialEventToken1",
-                        "🌼": "specialEventToken2",
-                    }
-                    if not (
-                        isinstance(self.special_event_tokens_dict, dict)
-                        and all(isinstance(k, str) and isinstance(v, str) for k, v in self.special_event_tokens_dict.items())
-                    ):
-                        input(
-                            "\n⛔ Special Event Token Error ⛔\nExpected a dictionary with string keys and values.\n" +
-                            dedent(
-                                """
-                                Example:
-                                {
-                                  "any": "specialEventToken1", <- This token will grab the emojis that the other accounts do not grab
-                                  "🌼": "specialEventToken2"   <- This token will exclusively grab the 🌼 emoji
-                                }"""
-                            )
-                        )
-                        sys.exit()
-                    elif self.special_event_tokens_dict == {}:
-                        input("\n⛔ Special Event Token Error ⛔\nNo values entered in special_event_tokens.json).\n" +
-                                    "If you wish to disable the Special Event Grabber, set self.SPECIAL_EVENT to False in config.py."
-                        )
-                        sys.exit()
-                    elif self.special_event_tokens_dict == example_special_event_tokens_dict:
-                        input("\n⛔ Special Event Token Error ⛔\nPlease replace the example values in special_event_tokens.json with real tokens.\n" +
-                                    "If you wish to disable the Special Event Grabber, set self.SPECIAL_EVENT to False in config.py."
-                        )
-                        sys.exit()
-                    else:
-                        asyncio.create_task(self.run_special_event_grabber())
-                        print(f"\n👀 Watching for special event reactions in {len(self.DROP_CHANNEL_IDS)} script drop channel(s) " +
-                                f"and {len(self.SERVER_ACTIVITY_DROP_CHANNEL_IDS)} server activity drop channel(s).")
-            except FileNotFoundError:
-                input("\n⛔ Special Event Token Error ⛔\nNo special_event_tokens.json file found.\n" +
-                            "If you wish to disable the Special Event Grabber, set self.SPECIAL_EVENT to False in config.py."
-                )
-                sys.exit()
-            except json.JSONDecodeError:
-                input(
-                    "\n⛔ Special Event Token Error ⛔\nExpected a dictionary with string keys and values.\n" +
-                    dedent(
-                        """
-                        Example:
-                        {
-                            "any": "specialEventToken1", <- This token will grab the emojis that the other accounts do not grab
-                            "🌼": "specialEventToken2"   <- This token will exclusively grab the 🌼 emoji
-                        }"""
-                    )
-                )
-                sys.exit()
-        else:
-            self.special_event_tokens_dict = {}
-
-    async def add_special_event_reaction(self, channel_id: str, message: dict):
-        try:
-            msg_id = message.get('id')
-            special_event_emoji = message.get('reactions', [])[-1].get('emoji', {}).get('name')  # Get the last (usually 4th) emoji (the event emoji)
-            if special_event_emoji in self.special_event_tokens_dict:
-                token = self.special_event_tokens_dict.get(special_event_emoji)
-            else:
-                token = self.special_event_tokens_dict.get("any", "")
-                if not token:  # If there is no token found for "any", return
-                    return
-            await self.add_reaction(token, 0, channel_id, msg_id, special_event_emoji, 0)  # 0 as account stub
-        except KeyError:
-            print(f"❌ [Special Event Account] Retrieve message failed: KeyError.")
-            pass
-        except IndexError:
-            print(f"❌ [Special Event Account] Retrieve message failed: IndexError.")
-            pass
-
-    async def run_special_event_grabber(self):
-        reacted_message_ids = set()
-        special_event_tokens = list(self.special_event_tokens_dict.values())
-        while True:
-            try:
-                for channel_id in self.SERVER_ACTIVITY_DROP_CHANNEL_IDS:
-                    url = f"https://discord.com/api/v10/channels/{channel_id}/messages?limit=20"
-                    headers = self.get_headers(random.choice(special_event_tokens), channel_id)
-                    async with aiohttp.ClientSession() as session:
-                        async with session.get(url, headers = headers) as resp:
-                            status = resp.status
-                            if status == 200:
-                                messages = await resp.json()
-                                for msg in messages:
-                                    msg_id = msg.get('id')
-                                    if all([
-                                        msg_id not in reacted_message_ids,  # Ensure no duplicate reactions on one message
-                                        msg.get('author', {}).get('id') == self.KARUTA_BOT_ID,
-                                        len(msg.get('reactions', [])) > 3,  # 3 cards + special event emoji(s)
-                                        (self.KARUTA_DROP_MESSAGE in msg.get('content', '') or self.KARUTA_SERVER_ACTIVITY_DROP_MESSAGE in msg.get('content', '')),
-                                        self.KARUTA_EXPIRED_DROP_MESSAGE not in msg.get('content', '')
-                                    ]):
-                                        await self.add_special_event_reaction(channel_id, msg)
-                                        reacted_message_ids.add(msg_id)
-                            else:
-                                print(f"❌ [Special Event Account] Retrieve message failed: Error code {status}.")
-                                return None
-            except Exception as e:
-                print(f"\n❌ Special Event Checker Failed ❌\n{e}")
-                return
-            await asyncio.sleep(random.uniform(0.5, 1.5))  # Short delay between checking channels to avoid rate-limiting
-
     async def drop_and_grab(self, token: str, account: int, channel_id: str, channel_tokens: list[str]):
         num_channel_tokens = len(channel_tokens)
         drop_message = random.choice(self.DROP_MESSAGES) + random.choice(self.RANDOM_ADDON)
@@ -575,11 +465,11 @@ class DropScript():
                             await asyncio.sleep(random.uniform(0.5, 3.5))
                 
                 # Grab special event emoji on special event account
-                if self.SPECIAL_EVENT and self.special_event_tokens_dict:
+                if self.SPECIAL_EVENT:
                     await asyncio.sleep(random.uniform(3, 4))
                     drop_message = await self.get_drop_message(token, account, channel_id, special_event = True)
                     if len(drop_message.get('reactions', [])) > 3:  # 3 cards + special event emoji(s)
-                        await self.add_special_event_reaction(channel_id, drop_message)
+                        await self.special_event_grabber.add_special_event_reaction(channel_id, drop_message)
 
                 # If only grabbing pog cards, then only the dropper will ever be active
                 # Hence, non-droppers should never send random messages in the channel; only the dropper will
@@ -681,7 +571,9 @@ class DropScript():
 
         await self.run_command_checker()
         await self.set_token_dictionaries()
-        await self.check_special_event()
+        
+        if self.SPECIAL_EVENT:
+            self.special_event_grabber = SpecialEventGrabber(main = self)
 
         if self.ONLY_GRAB_POG_CARDS:
             print("\n❗ Only pog cards (as defined by CardCompanion) will be grabbed.")
