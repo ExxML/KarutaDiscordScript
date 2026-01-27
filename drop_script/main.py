@@ -17,6 +17,7 @@ import math
 import time
 import json
 import sys
+import re
 
 class DropScript():
     def __init__(self):
@@ -318,12 +319,23 @@ class DropScript():
                         for msg in messages:
                             if all([
                                 msg.get('author', {}).get('id') == self.CARD_COMPANION_BOT_ID,
-                                msg.get('id') > drop_message_id,  # Ensure CardCompanion message is after the drop message
+                                msg.get('id') > drop_message_id,  # Ensure CardCompanion message was sent after the drop message
                                 any(emoji_str in msg.get('content', '') for emoji_str in self.CARD_COMPANION_POG_EMOJIS)  # Check if message contains an emoji indicating a pog card
                             ]):
-                                card_number = int(msg.get('content')[5])  # The fifth index is the card number of the pog card
-                                print(f"✅ [Account #{account}] Identified CardCompanion pog card: [{card_number}].")
-                                return card_number
+                                content = msg.get('content', '')
+                                card_numbers = []
+                                # Parse card numbers
+                                for match in re.findall(r"<:(no_\d+):\d+>", content):
+                                    emoji_str = f":{match}:"
+                                    if emoji_str in self.CARD_COMPANION_POG_EMOJIS:
+                                        card_numbers.append(int(match.split("_")[1]))
+                                # Check if card numbers were successfully parsed
+                                if card_numbers:
+                                    print(f"✅ [Account #{account}] Identified CardCompanion pog card(s): {card_numbers}.")
+                                    return card_numbers
+                                else:
+                                    print(f"❌ [Account #{account}] Unable to parse pog card numbers from CardCompanion message.")
+                                    return None
                     except (KeyError, IndexError):
                         pass
                 else:
@@ -430,30 +442,54 @@ class DropScript():
             if drop_message:
                 drop_message_id = drop_message.get('id')
                 # Note that there is no need to wait for the CardCompanion message because get_drop_message() only returns after all Karuta emojis have been added, by which time CardCompanion should have already identified the drop
-                pog_card = await self.get_card_companion_pog_card(token, account, channel_id, drop_message_id) # Get pog card number: 1, 2, 3, or None
-                if pog_card and pog_card <= len(self.EMOJIS): # Ensure pog card exists and is within bounds
-                    # If pog card exists, ensure the dropper is the grabber
-                    pog_card_index = pog_card - 1
-                    emoji = self.EMOJIS[pog_card_index]
-                    await self.add_reaction(token, account, channel_id, drop_message_id, emoji, 0)
-                    await asyncio.sleep(random.uniform(0.5, 3.5))
+                pog_cards = await self.get_card_companion_pog_card(token, account, channel_id, drop_message_id) # Get pog card number(s) as a list (containing 1, 2, or 3) or None
+                if pog_cards:
+                    # If there is at least one pog card, always ensure the dropper is the grabber
+                    if self.ATTEMPT_EXTRA_POG_GRABS:
+                        # If there are pog card(s) and attempting extra grabs,
+                        if self.ONLY_GRAB_POG_CARDS:
+                            # If only grabbing pog cards,
+                            # The dropper will attempt to grab all pog cards, and non-droppers will attempt to grab all the pog cards EXCEPT the first pog card (the card that the dropper is guaranteed to be able to grab)
+                            # This way, pog cards will always be grabbed, even if the dropper did not have enough extra grabs
+                        
+                        else:
+                            # If grabbing all cards,
+                            # The dropper will attempt to grab all pog cards, and non-droppers will attempt to grab the other 2 cards, regardless of whether the dropper has already grabbed the pog card(s)
+                            # This way, pog cards will always be grabbed, even if the dropper did not have enough extra grabs
+                        
+                    else:
+                        # If there are pog card(s) but not attempting extra grabs,
+                        if self.ONLY_GRAB_POG_CARDS:
+                            # If only grabbing pog cards,
+                            # The dropper will only grab the first pog card, and non-droppers will grab the remaining pog cards, if any
 
-                    if not self.ONLY_GRAB_POG_CARDS:
-                        # Grab other cards normally
-                        other_emojis = self.EMOJIS[:pog_card_index] + self.EMOJIS[pog_card_index + 1:]
-                        shuffled_other_emojis = random.sample(other_emojis, len(other_emojis))
-                        other_channel_tokens = channel_tokens.copy()
-                        other_channel_tokens.remove(token)
-                        num_other_channel_tokens = len(other_channel_tokens)
-                        random.shuffle(other_channel_tokens)
 
-                        for i in range(num_other_channel_tokens):
-                            emoji = shuffled_other_emojis[i]
-                            grab_token = other_channel_tokens[i]
-                            grab_account = self.tokens.index(grab_token) + 1
-                            await self.add_reaction(grab_token, grab_account, channel_id, drop_message_id, emoji, 0)
+                        else:
+                            # If grabbing all cards,
+                            # The dropper will only grab the first pog card, and non-droppers will grab the other two cards (which may or may not also be pog cards)
+                            first_pog_card_index = pog_cards[0] - 1
+                            first_pog_card_emoji = self.EMOJIS[first_pog_card_index]
+                            await self.add_reaction(token, account, channel_id, drop_message_id, first_pog_card_emoji, 0)
                             await asyncio.sleep(random.uniform(0.5, 3.5))
+
+                            # Copy, remove, and shuffle other_emojis and other_channel_tokens
+                            other_emojis = self.EMOJIS.copy()
+                            other_emojis.remove(first_pog_card_emoji)
+                            shuffled_other_emojis = random.sample(other_emojis, len(other_emojis))
+                            other_channel_tokens = channel_tokens.copy()
+                            other_channel_tokens.remove(token)
+                            num_other_channel_tokens = len(other_channel_tokens)
+                            random.shuffle(other_channel_tokens)
+
+                            for i in range(num_other_channel_tokens):
+                                emoji = shuffled_other_emojis[i]
+                                grab_token = other_channel_tokens[i]
+                                grab_account = self.tokens.index(grab_token) + 1
+                                await self.add_reaction(grab_token, grab_account, channel_id, drop_message_id, emoji, 0)
+                                await asyncio.sleep(random.uniform(0.5, 3.5))
                 else:
+                    # If there are no pog cards and grabbing all cards, 
+                    # All three accounts will grab one card each, as per usual
                     if not self.ONLY_GRAB_POG_CARDS:
                         shuffled_emojis = random.sample(self.EMOJIS, len(self.EMOJIS))  # Shuffle emojis for random emoji order
                         random.shuffle(channel_tokens)  # Shuffle tokens for random emoji assignment
@@ -481,7 +517,7 @@ class DropScript():
                             await self.send_message(token, account, channel_id, random_msg, self.RATE_LIMIT)
                             await asyncio.sleep(random.uniform(1, 4))
                 else:
-                    # If not only grabbing pog cards (grabbing all cards), then all accounts in the channel are active, so all accounts should send random messages
+                    # If grabbing all cards, then all accounts in the channel are active, so all accounts should send random messages
                     random.shuffle(channel_tokens)  # Shuffle tokens again for random order messages
                     for i in range(num_channel_tokens):
                         if random.choice([True, False]):  # 50% chance of sending random commands/messages
