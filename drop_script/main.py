@@ -503,7 +503,8 @@ class DropScript():
                 
                 # Grab special event emoji on special event account
                 if self.SPECIAL_EVENT:
-                    await asyncio.sleep(random.uniform(3, 4))
+                    if self.ONLY_GRAB_POG_CARDS:  # Extra delay is only necessary if no cards were grabbed (if self.ONLY_GRAB_POG_CARDS = True)
+                        await asyncio.sleep(3)
                     drop_message = await self.get_drop_message(token, account, channel_id, special_event = True)
                     if len(drop_message.get('reactions', [])) > 3:  # 3 cards + special event emoji(s)
                         await self.special_event_grabber.add_special_event_reaction(channel_id, drop_message)
