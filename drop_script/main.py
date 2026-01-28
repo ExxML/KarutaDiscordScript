@@ -599,7 +599,7 @@ class DropScript():
                         if random.randint(1, self.RANDOM_COMMAND_RATE) == 1:
                             await self.send_message(token, self.tokens.index(token) + 1, channel_id, random.choice(self.RANDOM_COMMANDS), 0)
         except Exception as e:
-            print(f"\n❌ Error in Channel Instance #{channel_num} ❌\n{e}")
+            print(f"\n❌ Error in Channel #{channel_num} Script Instance ❌\n{e}")
 
     async def run_script(self):
         if self.SHUFFLE_ACCOUNTS:
