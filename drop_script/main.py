@@ -507,7 +507,7 @@ class DropScript():
                         await asyncio.sleep(3)
                     drop_message = await self.get_drop_message(token, account, channel_id, special_event = True)
                     if len(drop_message.get('reactions', [])) > 3:  # 3 cards + special event emoji(s)
-                        await self.special_event_grabber.add_special_event_reaction(channel_id, drop_message)
+                        await self.special_event_grabber.add_special_event_reactions(channel_id, drop_message)
 
                 # If only grabbing pog cards, then only the dropper will ever be active
                 # Hence, non-droppers should never send random messages in the channel; only the dropper will

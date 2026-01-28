@@ -66,17 +66,19 @@ class SpecialEventGrabber():
             )
             sys.exit()
 
-    async def add_special_event_reaction(self, channel_id: str, message: dict):
+    async def add_special_event_reactions(self, channel_id: str, message: dict):
         try:
             msg_id = message.get('id')
-            special_event_emoji = message.get('reactions', [])[-1].get('emoji', {}).get('name')  # Get the last (usually 4th) emoji (the event emoji)
-            if special_event_emoji in self.special_event_tokens_dict:
-                token = self.special_event_tokens_dict.get(special_event_emoji)
-            else:
-                token = self.special_event_tokens_dict.get("any", "")
-                if not token:  # If there is no token found for "any", return
-                    return
-            await self.main.add_reaction(token, 0, channel_id, msg_id, special_event_emoji, 0)  # 0 as account stub
+            num_special_event_emojis = len(message.get('reactions')) - len(self.main.EMOJIS)  # num_special_event_emojis will be >= 1
+            for i in range(1, num_special_event_emojis + 1):
+                special_event_emoji = message.get('reactions')[-i].get('emoji').get('name')  # Get the ith last emoji (the event emoji)
+                if special_event_emoji in self.special_event_tokens_dict:
+                    token = self.special_event_tokens_dict.get(special_event_emoji)
+                else:
+                    token = self.special_event_tokens_dict.get("any", "")
+                    if not token:  # If there is no token found for "any", return
+                        return
+                await self.main.add_reaction(token, 0, channel_id, msg_id, special_event_emoji, 0)  # 0 as account stub
         except KeyError:
             print(f"❌ [Special Event Account] Retrieve message failed: KeyError.")
             pass
@@ -85,7 +87,9 @@ class SpecialEventGrabber():
             pass
 
     async def run_special_event_grabber(self):
-        reacted_message_ids = set()
+         # history contains the messages that have been previously reacted to (key = message ID, value = number of emojis reacted)
+         # Note that if the number of distinct emojis has changed, the message will be considered unseen! This way, if there are multiple special event emojis, all of them will be guaranteed to be grabbed.
+        history: dict[str, int] = {} 
         special_event_tokens = list(self.special_event_tokens_dict.values())
         while True:
             try:
@@ -99,15 +103,16 @@ class SpecialEventGrabber():
                                 messages = await resp.json()
                                 for msg in messages:
                                     msg_id = msg.get('id')
+                                    num_reactions = len(msg.get('reactions', []))
                                     if all([
-                                        msg_id not in reacted_message_ids,  # Ensure no duplicate reactions on one message
+                                        (msg_id not in history or history.get(msg_id) != num_reactions),
                                         msg.get('author', {}).get('id') == self.main.KARUTA_BOT_ID,
-                                        len(msg.get('reactions', [])) > 3,  # 3 cards + special event emoji(s)
+                                        num_reactions > 3,  # 3 cards + special event emoji(s)
                                         (self.main.KARUTA_DROP_MESSAGE in msg.get('content', '') or self.main.KARUTA_SERVER_ACTIVITY_DROP_MESSAGE in msg.get('content', '')),
                                         self.main.KARUTA_EXPIRED_DROP_MESSAGE not in msg.get('content', '')
                                     ]):
-                                        await self.add_special_event_reaction(channel_id, msg)
-                                        reacted_message_ids.add(msg_id)
+                                        await self.add_special_event_reactions(channel_id, msg)
+                                        history[msg_id] = num_reactions
                             else:
                                 print(f"❌ [Special Event Account] Retrieve message failed: Error code {status}.")
                                 return None
