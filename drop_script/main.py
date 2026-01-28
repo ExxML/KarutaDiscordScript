@@ -307,7 +307,7 @@ class DropScript():
                     print(f"❌ [Account #{account}] Send message '{content}' failed: Error code {status}.")
                 return status == 200
 
-    async def get_card_companion_pog_card(self, token: str, account: int, channel_id: str, drop_message_id: str):
+    async def get_card_companion_pog_cards(self, token: str, account: int, channel_id: str, drop_message_id: str):
         url = f"https://discord.com/api/v10/channels/{channel_id}/messages?limit=10"
         headers = self.get_headers(token, channel_id)
         async with aiohttp.ClientSession() as session:
@@ -442,7 +442,7 @@ class DropScript():
             if drop_message:
                 drop_message_id = drop_message.get('id')
                 # Note that there is no need to wait for the CardCompanion message because get_drop_message() only returns after all Karuta emojis have been added, by which time CardCompanion should have already identified the drop
-                pog_cards = await self.get_card_companion_pog_card(token, account, channel_id, drop_message_id) # Get pog card number(s) as a list (containing 1, 2, or 3) or None
+                pog_cards = await self.get_card_companion_pog_cards(token, account, channel_id, drop_message_id) # Get pog card number(s) as a list (containing 1, 2, or 3) or None
                 if pog_cards:
                     # If there is at least one pog card, always ensure the dropper is the grabber
                     if self.ATTEMPT_EXTRA_POG_GRABS:
@@ -490,6 +490,7 @@ class DropScript():
                 else:
                     # If there are no pog cards and grabbing all cards, 
                     # All three accounts will grab one card each, as per usual
+                    # Note that self.ATTEMPT_EXTRA_POG_GRABS is not a factor here because there are no pog cards in the drop
                     if not self.ONLY_GRAB_POG_CARDS:
                         shuffled_emojis = random.sample(self.EMOJIS, len(self.EMOJIS))  # Shuffle emojis for random emoji order
                         random.shuffle(channel_tokens)  # Shuffle tokens for random emoji assignment
