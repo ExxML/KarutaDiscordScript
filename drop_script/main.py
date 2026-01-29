@@ -403,6 +403,11 @@ class DropScript():
                     else:
                         print(f"❌ [Account #{account}] React {emoji} failed: Error code {status}.")
 
+    async def burn_non_pog_cards(self, tokens_to_burn: list[str], channel_id: str):
+        for token in tokens_to_burn:
+            account = self.tokens.index(token) + 1
+        # TODO
+
     async def run_command_checker(self):
         if self.COMMAND_CHANNEL_IDS:
             for channel_id in self.COMMAND_CHANNEL_IDS:
@@ -483,13 +488,23 @@ class DropScript():
                         other_channel_tokens = channel_tokens.copy()
                         other_channel_tokens.remove(token)
                         random.shuffle(other_channel_tokens)
+                        tokens_to_burn = []
                         num_other_channel_tokens = len(other_channel_tokens)
                         for i in range(num_other_channel_tokens):
                             emoji = other_emojis[i]
                             grab_token = other_channel_tokens[i]
                             grab_account = self.tokens.index(grab_token) + 1
+                            if self.BURN_NON_POG_CARDS:
+                                try:
+                                    card_number = self.EMOJIS.index(emoji) + 1
+                                    if card_number not in pog_cards:
+                                        tokens_to_burn.append(grab_token)
+                                except ValueError:
+                                    print(f"❌ [Account #{grab_account}] Unable to identify card number given emoji: {emoji}; skipping burn.")
                             await self.add_reaction(grab_token, grab_account, channel_id, drop_message_id, emoji, 0)
                             await asyncio.sleep(random.uniform(0.5, 3.5))
+                        if self.BURN_NON_POG_CARDS and tokens_to_burn:
+                            await self.burn_non_pog_cards(tokens_to_burn, channel_id)
 
                 else:
                     # If there are no pog cards and grabbing all cards, 
@@ -500,17 +515,27 @@ class DropScript():
                         random.shuffle(shuffled_emojis)
                         shuffled_channel_tokens = channel_tokens.copy()
                         random.shuffle(shuffled_channel_tokens)
+                        tokens_to_burn = []
                         for i in range(num_channel_tokens):
                             emoji = shuffled_emojis[i]
                             grab_token = shuffled_channel_tokens[i]
                             grab_account = self.tokens.index(grab_token) + 1
+                            if self.BURN_NON_POG_CARDS:
+                                try:
+                                    card_number = self.EMOJIS.index(emoji) + 1
+                                    if card_number not in pog_cards:
+                                        tokens_to_burn.append(grab_token)
+                                except ValueError:
+                                    print(f"❌ [Account #{grab_account}] Unable to identify card number given emoji: {emoji}; skipping burn.")
                             await self.add_reaction(grab_token, grab_account, channel_id, drop_message_id, emoji, 0)
                             await asyncio.sleep(random.uniform(0.5, 3.5))
+                        if self.BURN_NON_POG_CARDS and tokens_to_burn:
+                            await self.burn_non_pog_cards(tokens_to_burn, channel_id)
                 
                 # Grab special event emoji on special event account
                 if self.SPECIAL_EVENT:
                     if self.ONLY_GRAB_POG_CARDS:  # Extra delay is only necessary if no cards were grabbed (if self.ONLY_GRAB_POG_CARDS = True)
-                        await asyncio.sleep(3)
+                        await asyncio.sleep(4)  # Extra delay to wait for special event emojis
                     drop_message = await self.get_drop_message(token, account, channel_id, special_event = True)
                     if len(drop_message.get('reactions', [])) > 3:  # 3 cards + special event emoji(s)
                         await self.special_event_grabber.add_special_event_reactions(channel_id, drop_message)
