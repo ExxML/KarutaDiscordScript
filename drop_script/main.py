@@ -461,12 +461,13 @@ class DropScript():
                     if self.ONLY_GRAB_POG_CARDS:
                         # If self.ONLY_GRAB_POG_CARDS = True, the non-droppers will grab the pog cards excluding the first one (if any)
                         # This way, pog cards will always be grabbed, even if the dropper did not have enough extra grabs
-                        pog_cards.pop(0)
-                        random.shuffle(pog_cards)
+                        other_pog_cards = pog_cards.copy()
+                        other_pog_cards.pop(0)
+                        random.shuffle(other_pog_cards)
                         other_channel_tokens = channel_tokens.copy()
                         other_channel_tokens.remove(token)
                         random.shuffle(other_channel_tokens)
-                        for i, pog_card in enumerate(pog_cards):
+                        for i, pog_card in enumerate(other_pog_cards):
                             emoji = self.EMOJIS[pog_card - 1]
                             grab_token = other_channel_tokens[i]
                             grab_account = self.tokens.index(grab_token) + 1
@@ -495,11 +496,13 @@ class DropScript():
                     # All three accounts will grab one card each, as per usual
                     # Note that self.ATTEMPT_EXTRA_POG_GRABS is not a factor here because there are no pog cards in the drop
                     if not self.ONLY_GRAB_POG_CARDS:
-                        shuffled_emojis = random.sample(self.EMOJIS, len(self.EMOJIS))  # Shuffle emojis for random emoji order
-                        random.shuffle(channel_tokens)  # Shuffle tokens for random emoji assignment
+                        shuffled_emojis = self.EMOJIS.copy()
+                        random.shuffle(shuffled_emojis)
+                        shuffled_channel_tokens = channel_tokens.copy()
+                        random.shuffle(shuffled_channel_tokens)
                         for i in range(num_channel_tokens):
                             emoji = shuffled_emojis[i]
-                            grab_token = channel_tokens[i]
+                            grab_token = shuffled_channel_tokens[i]
                             grab_account = self.tokens.index(grab_token) + 1
                             await self.add_reaction(grab_token, grab_account, channel_id, drop_message_id, emoji, 0)
                             await asyncio.sleep(random.uniform(0.5, 3.5))
@@ -523,10 +526,11 @@ class DropScript():
                             await asyncio.sleep(random.uniform(1, 4))
                 else:
                     # If grabbing all cards, then all accounts in the channel are active, so all accounts should send random messages
-                    random.shuffle(channel_tokens)  # Shuffle tokens again for random order messages
+                    shuffled_channel_tokens = channel_tokens.copy()
+                    random.shuffle(shuffled_channel_tokens)
                     for i in range(num_channel_tokens):
                         if random.choice([True, False]):  # 50% chance of sending random commands/messages
-                            msg_token = channel_tokens[i]
+                            msg_token = shuffled_channel_tokens[i]
                             msg_account = self.tokens.index(msg_token) + 1
                             for _ in range(random.randint(1, 3)):
                                 random_msg_list = random.choice([self.RANDOM_COMMANDS, self.RANDOM_MESSAGES])
