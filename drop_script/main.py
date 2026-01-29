@@ -456,7 +456,7 @@ class DropScript():
                         first_pog_card_index = pog_cards[0] - 1
                         first_pog_card_emoji = self.EMOJIS[first_pog_card_index]
                         await self.add_reaction(token, account, channel_id, drop_message_id, first_pog_card_emoji, 0)
-                        await asyncio.sleep(random.uniform(0.5, 3.5))          
+                        await asyncio.sleep(random.uniform(0.5, 3.5))
 
                     if self.ONLY_GRAB_POG_CARDS:
                         # If self.ONLY_GRAB_POG_CARDS = True, the non-droppers will grab the pog cards excluding the first one (if any)
@@ -490,7 +490,7 @@ class DropScript():
                             grab_account = self.tokens.index(grab_token) + 1
                             await self.add_reaction(grab_token, grab_account, channel_id, drop_message_id, emoji, 0)
                             await asyncio.sleep(random.uniform(0.5, 3.5))
-                            
+
                 else:
                     # If there are no pog cards and grabbing all cards, 
                     # All three accounts will grab one card each, as per usual
