@@ -3,12 +3,14 @@ from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
 import undetected_chromedriver as uc  # MUST use undetected_chromedriver to bypass Cloudflare bot detection
+import subprocess
 import traceback
 import random
 import signal
 import atexit
 import time
 import sys
+import re
 
 class AutoVoter():
     def __init__(self, unshuffled_tokens: list[str], tokens: list[str], windows_versions: list[str], browser_versions: list[str]):
@@ -28,6 +30,39 @@ class AutoVoter():
         self.WINDOWS_VERSIONS = windows_versions
         self.BROWSER_VERSIONS = browser_versions
 
+    def get_chrome_major_version(self):
+        commands = []
+        if sys.platform.startswith("win"):  # Windows
+            commands = [
+                r'reg query "HKEY_CURRENT_USER\Software\Google\Chrome\BLBeacon" /v version',
+                r'reg query "HKEY_LOCAL_MACHINE\Software\Google\Chrome\BLBeacon" /v version',
+            ]
+        elif sys.platform == "darwin":  # MacOS
+            commands = [
+                "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome --version"
+            ]
+        else:  # Linux
+            commands = [
+                "google-chrome --version",
+                "google-chrome-stable --version",
+                "chromium-browser --version",
+                "chromium --version",
+            ]
+        
+        for cmd in commands:
+            try:
+                output = subprocess.check_output(
+                    cmd, shell = True, stderr = subprocess.DEVNULL
+                ).decode()
+                match = re.search(r"(\d+)\.", output)
+                if match:
+                    return int(match.group(1))
+            except Exception:
+                pass
+
+        print("ℹ️ Chrome version could not be detected. Loading Chrome may cause a version mismatch error.")
+        return None
+
     def load_chrome(self):
         options = uc.ChromeOptions()
         options.add_argument('--headless=new')  # Comment for non-headless mode if needed
@@ -43,7 +78,12 @@ class AutoVoter():
         )
         options.add_argument(f'--user-agent={user_agent}')
         
-        self.driver = uc.Chrome(options = options)
+        curr_chrome_version = self.get_chrome_major_version()
+        if curr_chrome_version:
+            self.driver = uc.Chrome(options = options, version_main = curr_chrome_version)
+        else:
+            # Attempt to open Chrome even if the version number couldn't be detected
+            self.driver = uc.Chrome(options = options)
 
         # Wait for the browser to actually create a window/webview
         timeout = 15  # seconds
