@@ -14,12 +14,6 @@ import re
 
 class AutoVoter():
     def __init__(self, unshuffled_tokens: list[str], tokens: list[str], windows_versions: list[str], browser_versions: list[str]):
-        ### Feel free to customize these settings ###
-        self.RAND_DELAY_MIN = 10  # (int) Minimum amount of minutes to wait between votes
-        self.RAND_DELAY_MAX = 20  # (int) Maximum amount of minutes to wait between votes
-        self.SHUFFLE_ACCOUNTS = True  # (bool) Whether to randomize the order of accounts when voting. I recommend keeping this setting `True`
-        self.ENABLE_WORKING = True  # (bool) Whether to do k!work when voting
-
         self.driver = None
         atexit.register(self.cleanup)
         signal.signal(signal.SIGINT, self.cleanup)
