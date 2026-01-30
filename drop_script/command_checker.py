@@ -220,7 +220,7 @@ class CommandChecker():
                 button_emoji = button.get('emoji', {}).get('name') or ''
                 button_label = button.get('label', '')
                 if button_string in button_emoji + button_label:
-                    custom_id = button.get('custom_id')
+                    custom_id = button.get('custom_id', '')
                     command_server_id = await self.get_server_id(token, account, self.COMMAND_CHANNEL_ID)
                     # Simulate button click via interaction callback
                     payload = {
@@ -229,7 +229,7 @@ class CommandChecker():
                         "guild_id": command_server_id,
                         "channel_id": self.COMMAND_CHANNEL_ID,
                         "message_flags": 0,
-                        "message_id": message.get('id'),
+                        "message_id": message.get('id', ''),
                         "application_id": button_bot_id,
                         "session_id": str(uuid.uuid4()),
                         "data": {
