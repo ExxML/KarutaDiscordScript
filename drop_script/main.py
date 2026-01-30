@@ -400,7 +400,7 @@ class DropScript():
             account = self.tokens.index(token) + 1
         # TODO
 
-    async def run_command_checker(self):
+    async def run_command_checkers(self):
         if self.COMMAND_CHANNEL_IDS:
             for channel_id in self.COMMAND_CHANNEL_IDS:
                 command_checker = CommandChecker(
@@ -412,7 +412,7 @@ class DropScript():
                     karuta_bot_id = self.KARUTA_BOT_ID,
                     rate_limit = self.RATE_LIMIT
                 )
-                asyncio.create_task(command_checker.run())
+                asyncio.create_task(command_checker.run_command_checker())
             print(f"\n🤖 Message commands are enabled in {len(self.COMMAND_CHANNEL_IDS)} channel(s).")
         else:
             print("\n🤖 Message commands are disabled.")
@@ -627,9 +627,9 @@ class DropScript():
         else:
             self.shuffled_tokens = None
 
-        await self.run_command_checker()
+        await self.run_command_checkers()  # if any
         await self.set_token_dictionaries()
-        
+
         if self.SPECIAL_EVENT:
             self.special_event_grabber = SpecialEventGrabber(main = self)
 
