@@ -27,16 +27,8 @@ class DropScript():
         ### DO NOT MODIFY THESE CONSTANTS ###
         self.KARUTA_BOT_ID = "646937666251915264"
         self.KARUTA_DROP_MESSAGE = "is dropping 3 cards!"
-        self.KARUTA_SERVER_ACTIVITY_DROP_MESSAGE = "I'm dropping 3 cards since this server is currently active!"
         self.KARUTA_EXPIRED_DROP_MESSAGE = "This drop has expired and the cards can no longer be grabbed."
         self.KARUTA_DROP_COOLDOWN_MESSAGE = ", you must wait"
-
-        self.KARUTA_CARD_TRANSFER_TITLE = "Card Transfer"
-
-        self.KARUTA_MULTITRADE_LOCK_MESSAGE = "Both sides must lock in before proceeding to the next step."
-        self.KARUTA_MULTITRADE_CONFIRM_MESSAGE = "This trade has been locked."
-
-        self.KARUTA_MULTIBURN_TITLE = "Burn Cards"
 
         self.CARD_COMPANION_BOT_ID = "1380936713639166082"
         self.CARD_COMPANION_POG_EMOJIS = [":no_1:", ":no_2:", ":no_3:"]
@@ -418,10 +410,6 @@ class DropScript():
                     command_channel_id = channel_id,
                     karuta_prefix = self.KARUTA_PREFIX,
                     karuta_bot_id = self.KARUTA_BOT_ID,
-                    karuta_card_transfer_title = self.KARUTA_CARD_TRANSFER_TITLE,
-                    karuta_multitrade_lock_message = self.KARUTA_MULTITRADE_LOCK_MESSAGE,
-                    karuta_multitrade_confirm_message = self.KARUTA_MULTITRADE_CONFIRM_MESSAGE,
-                    karuta_multiburn_title = self.KARUTA_MULTIBURN_TITLE,
                     rate_limit = self.RATE_LIMIT
                 )
                 asyncio.create_task(command_checker.run())

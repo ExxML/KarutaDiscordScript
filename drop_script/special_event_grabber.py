@@ -65,6 +65,8 @@ class SpecialEventGrabber():
                 )
             )
             sys.exit()
+        
+        self.KARUTA_SERVER_ACTIVITY_DROP_MESSAGE = "I'm dropping 3 cards since this server is currently active!"
 
     async def add_special_event_reactions(self, channel_id: str, message: dict):
         try:
@@ -108,7 +110,7 @@ class SpecialEventGrabber():
                                         num_reactions > 3,  # 3 cards + special event emoji(s)
                                         msg.get('author', {}).get('id') == self.main.KARUTA_BOT_ID,
                                         (msg_id not in history or history.get(msg_id) != num_reactions),
-                                        (self.main.KARUTA_DROP_MESSAGE in msg.get('content', '') or self.main.KARUTA_SERVER_ACTIVITY_DROP_MESSAGE in msg.get('content', '')),
+                                        (self.main.KARUTA_DROP_MESSAGE in msg.get('content', '') or self.KARUTA_SERVER_ACTIVITY_DROP_MESSAGE in msg.get('content', '')),
                                         self.main.KARUTA_EXPIRED_DROP_MESSAGE not in msg.get('content', '')
                                     ]):
                                         await self.add_special_event_reactions(channel_id, msg)
