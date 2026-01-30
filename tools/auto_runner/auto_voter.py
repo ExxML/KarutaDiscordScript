@@ -195,8 +195,8 @@ class AutoVoter():
         print("Loading new Undetected Chrome instance...")
         try:
             self.load_chrome()
-        except Exception:
-            input("⛔ Chrome Error ⛔\nChrome failed to open. Please ensure your Google Chrome is up-to-date.")
+        except Exception as e:
+            input(f"\n⛔ Chrome Error ⛔\nChrome failed to open. Please ensure your Google Chrome is up-to-date.\n{e}")
             sys.exit()
         print(f"Auto-voting on Account #{self.TOKENS.index(token) + 1} ({account}/{len(self.tokens)})...")
         self.auto_vote(token)
