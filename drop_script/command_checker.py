@@ -26,11 +26,6 @@ class CommandChecker():
         self.KARUTA_PAUSE_COMMAND = "/pause"
         self.KARUTA_RESUME_COMMAND = "/resume"
 
-        self.KARUTA_CARD_TRANSFER_TITLE = "Card Transfer"
-        self.KARUTA_MULTITRADE_LOCK_MESSAGE = "Both sides must lock in before proceeding to the next step."
-        self.KARUTA_MULTITRADE_CONFIRM_MESSAGE = "This trade has been locked."
-        self.KARUTA_MULTIBURN_TITLE = "Burn Cards"
-
         self.discord_down_consec_count = 0  # Consecutive times HTTP error 502/503 is returned
         self.DISCORD_DOWN_CONSEC_LIMIT = 5  # When HTTP error 502/503 is returned self.discord_service_down_limit times in a row, start displaying warnings
         self.exception_count = 0  # Consecutive times an exception is thrown
@@ -40,54 +35,6 @@ class CommandChecker():
         self.multitrade_messages = []
         self.multiburn_initial_messages = []
         self.multiburn_fire_messages = []
-
-    async def get_user_id(self, token: str, channel_id: str):
-        headers = self.main.get_headers(token, channel_id)
-        user_id = None
-        async with aiohttp.ClientSession() as session:
-            async with session.get("https://discord.com/api/v10/users/@me", headers = headers) as resp:
-                if resp.status == 200:
-                    user_id = (await resp.json()).get('id')
-        return user_id
-
-    async def get_karuta_message(self, token: str, account: int, channel_id: str, search_content: str, rate_limited: int):
-        url = f"https://discord.com/api/v10/channels/{channel_id}/messages?limit=50"
-        headers = self.main.get_headers(token, channel_id)
-        user_id = await self.get_user_id(token, channel_id)
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers = headers) as resp:
-                status = resp.status
-                if status == 200:
-                    messages = await resp.json()
-                    try:
-                        for msg in messages:
-                            referenced_author_id = msg.get('referenced_message', {}).get('author', {}).get('id')  # Get the user ID of the user being replied to
-                            if msg.get('author', {}).get('id') == self.KARUTA_BOT_ID and user_id == referenced_author_id:
-                                if search_content == self.KARUTA_CARD_TRANSFER_TITLE and msg.get('embeds') and self.KARUTA_CARD_TRANSFER_TITLE == msg['embeds'][0].get('title'):
-                                    print(f"✅ [Account #{account}] Retrieved card transfer message.")
-                                    return msg
-                                elif search_content == self.KARUTA_MULTITRADE_LOCK_MESSAGE and self.KARUTA_MULTITRADE_LOCK_MESSAGE in msg.get('content', ''):
-                                    print(f"✅ [Account #{account}] Retrieved multitrade lock message.")
-                                    return msg
-                                elif search_content == self.KARUTA_MULTITRADE_CONFIRM_MESSAGE and self.KARUTA_MULTITRADE_CONFIRM_MESSAGE in msg.get('content', ''):
-                                    print(f"✅ [Account #{account}] Retrieved multitrade confirm message.")
-                                    return msg
-                                elif search_content == self.KARUTA_MULTIBURN_TITLE and msg.get('embeds') and self.KARUTA_MULTIBURN_TITLE == msg['embeds'][0].get('title'):
-                                    print(f"✅ [Account #{account}] Retrieved multiburn message.")
-                                    return msg
-                    except (KeyError, IndexError):
-                        pass
-                elif status == 429 and rate_limited < self.RATE_LIMIT:
-                    rate_limited += 1
-                    retry_after = 1  # seconds
-                    print(f"⚠️ [Account #{account}] Retrieve message failed ({rate_limited}/{self.RATE_LIMIT}): Rate limited, retrying after {retry_after}s.")
-                    await asyncio.sleep(retry_after)
-                    return await self.get_karuta_message(token, account, channel_id, search_content, rate_limited)
-                else:
-                    print(f"❌ [Account #{account}] Retrieve message failed: Error code {status}.")
-                    return None
-                print(f"❌ [Account #{account}] Retrieve message failed: Message '{search_content}' not found in recent messages.")
-                return None
 
     async def check_command(self, token: str):
         url = f"https://discord.com/api/v10/channels/{self.COMMAND_CHANNEL_ID}/messages?limit=3"
@@ -200,51 +147,10 @@ class CommandChecker():
                 # If status = 200 but no MESSAGE_COMMAND_PREFIX found |OR| If status = 502/503 but not reached limit yet
                 return None, None, None
 
-    async def get_server_id(self, token: str, account: int, channel_id: str):
-        url = f"https://discord.com/api/v10/channels/{channel_id}"
-        headers = self.main.get_headers(token, channel_id)
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers = headers) as resp:
-                status = resp.status
-                if status != 200:
-                    print(f"❌ [Account #{account}] Retrieve Guild ID failed: Error code {status}.")
-                    return None
-                data = await resp.json()
-                return data.get("guild_id")
-
-    async def get_payload(self, token: str, account: int, channel_id: str, button_string: str, message: dict):
-        button_bot_id = message.get('author', {}).get('id')
-        components = message.get('components', [])
-        for action_row in components:
-            for button in action_row.get('components', []):
-                button_emoji = button.get('emoji', {}).get('name') or ''
-                button_label = button.get('label', '')
-                if button_string in button_emoji + button_label:
-                    custom_id = button.get('custom_id', '')
-                    command_server_id = await self.get_server_id(token, account, channel_id)
-                    # Simulate button click via interaction callback
-                    payload = {
-                        "type": 3,  # Component interaction
-                        "nonce": str(uuid.uuid4().int >> 64),  # Unique interaction ID
-                        "guild_id": command_server_id,
-                        "channel_id": channel_id,
-                        "message_flags": 0,
-                        "message_id": message.get('id', ''),
-                        "application_id": button_bot_id,
-                        "session_id": str(uuid.uuid4()),
-                        "data": {
-                            "component_type": 2,
-                            "custom_id": custom_id
-                        }
-                    }
-                    print(f"✅ [Account #{account}] Found {button_string} button successfully.")
-                    return payload
-        return None
-
     async def check_card_transfer(self, token: str, account: int, command: str):
         if command.startswith(f"{self.KARUTA_PREFIX}give") or command.startswith(f"{self.KARUTA_PREFIX}g"):
             await asyncio.sleep(random.uniform(3, 5))  # Wait for Karuta card transfer message
-            card_transfer_message = await self.get_karuta_message(token, account, self.COMMAND_CHANNEL_ID, self.KARUTA_CARD_TRANSFER_TITLE, self.RATE_LIMIT)
+            card_transfer_message = await self.get_karuta_message(token, account, self.COMMAND_CHANNEL_ID, self.main.KARUTA_CARD_TRANSFER_TITLE, self.RATE_LIMIT)
             if card_transfer_message and card_transfer_message not in self.card_transfer_messages:
                 self.card_transfer_messages.append(card_transfer_message)
                 # Find ✅ button
@@ -263,7 +169,7 @@ class CommandChecker():
 
     async def check_lock_multitrade(self, token: str, account: int, command: str):
         if command == self.KARUTA_LOCK_COMMAND:
-            multitrade_lock_message = await self.get_karuta_message(token, account, self.COMMAND_CHANNEL_ID, self.KARUTA_MULTITRADE_LOCK_MESSAGE, self.RATE_LIMIT)
+            multitrade_lock_message = await self.get_karuta_message(token, account, self.COMMAND_CHANNEL_ID, self.main.KARUTA_MULTITRADE_LOCK_MESSAGE, self.RATE_LIMIT)
             if multitrade_lock_message and multitrade_lock_message not in self.multitrade_messages:
                 self.multitrade_messages.append(multitrade_lock_message)
                 # Find 🔒 button
@@ -276,7 +182,7 @@ class CommandChecker():
                             if status == 204:
                                 print(f"✅ [Account #{account}] Locked multitrade.")
                                 await asyncio.sleep(random.uniform(3, 5))  # Wait for Karuta multitrade message to update
-                                multitrade_confirm_message = await self.get_karuta_message(token, account, self.COMMAND_CHANNEL_ID, self.KARUTA_MULTITRADE_CONFIRM_MESSAGE, self.RATE_LIMIT)
+                                multitrade_confirm_message = await self.get_karuta_message(token, account, self.COMMAND_CHANNEL_ID, self.main.KARUTA_MULTITRADE_CONFIRM_MESSAGE, self.RATE_LIMIT)
                                 # Find ✅ button
                                 check_payload = await self.get_payload(token, account, self.COMMAND_CHANNEL_ID, '✅', multitrade_confirm_message)
                                 if check_payload is not None:
@@ -296,7 +202,7 @@ class CommandChecker():
     async def check_multiburn(self, token: str, account: int, command: str):
         if command.startswith(f"{self.KARUTA_PREFIX}multiburn") or command.startswith(f"{self.KARUTA_PREFIX}mb"):
             await asyncio.sleep(random.uniform(3, 5))  # Wait for Karuta multiburn message
-            multiburn_initial_message = await self.get_karuta_message(token, account, self.COMMAND_CHANNEL_ID, self.KARUTA_MULTIBURN_TITLE, self.RATE_LIMIT)
+            multiburn_initial_message = await self.get_karuta_message(token, account, self.COMMAND_CHANNEL_ID, self.main.KARUTA_MULTIBURN_TITLE, self.RATE_LIMIT)
             if multiburn_initial_message and multiburn_initial_message not in self.multiburn_initial_messages:
                 await asyncio.sleep(3)  # Longer delay to wait for check button to enable
                 self.multiburn_initial_messages.append(multiburn_initial_message)
@@ -316,7 +222,7 @@ class CommandChecker():
 
     async def confirm_multiburn(self, token: str, account: int, command: str):
         if command == self.KARUTA_MULTIBURN_COMMAND:
-            multiburn_fire_message = await self.get_karuta_message(token, account, self.COMMAND_CHANNEL_ID, self.KARUTA_MULTIBURN_TITLE, self.RATE_LIMIT)
+            multiburn_fire_message = await self.get_karuta_message(token, account, self.COMMAND_CHANNEL_ID, self.main.KARUTA_MULTIBURN_TITLE, self.RATE_LIMIT)
             if multiburn_fire_message and multiburn_fire_message not in self.multiburn_fire_messages:
                 self.multiburn_fire_messages.append(multiburn_fire_message)
                 # Find 🔥 button
@@ -329,7 +235,7 @@ class CommandChecker():
                             if status == 204:
                                 print(f"✅ [Account #{account}] Confirmed initial (1/2) multiburn.")
                                 await asyncio.sleep(random.uniform(3, 5))  # Wait for Karuta multiburn message to update
-                                multiburn_confirm_message = await self.get_karuta_message(token, account, self.COMMAND_CHANNEL_ID, self.KARUTA_MULTIBURN_TITLE, self.RATE_LIMIT)
+                                multiburn_confirm_message = await self.get_karuta_message(token, account, self.COMMAND_CHANNEL_ID, self.main.KARUTA_MULTIBURN_TITLE, self.RATE_LIMIT)
                                 # Find ✅ button
                                 check_payload = await self.get_payload(token, account, self.COMMAND_CHANNEL_ID, '✅', multiburn_confirm_message)
                                 if check_payload is not None:

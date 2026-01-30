@@ -15,6 +15,7 @@ import ctypes
 import signal
 import math
 import time
+import uuid
 import json
 import sys
 import re
@@ -29,6 +30,12 @@ class DropScript():
         self.KARUTA_DROP_MESSAGE = "is dropping 3 cards!"
         self.KARUTA_EXPIRED_DROP_MESSAGE = "This drop has expired and the cards can no longer be grabbed."
         self.KARUTA_DROP_COOLDOWN_MESSAGE = ", you must wait"
+
+        self.KARUTA_CARD_TRANSFER_TITLE = "Card Transfer"
+        self.KARUTA_MULTITRADE_LOCK_MESSAGE = "Both sides must lock in before proceeding to the next step."
+        self.KARUTA_MULTITRADE_CONFIRM_MESSAGE = "This trade has been locked."
+        self.KARUTA_BURN_TITLE = "Burn Card"
+        self.KARUTA_MULTIBURN_TITLE = "Burn Cards"
 
         self.CARD_COMPANION_BOT_ID = "1380936713639166082"
         self.CARD_COMPANION_POG_EMOJIS = [":no_1:", ":no_2:", ":no_3:"]
@@ -394,6 +401,89 @@ class DropScript():
                         await self.add_reaction(token, account, channel_id, message_id, emoji, rate_limited)
                     else:
                         print(f"❌ [Account #{account}] React {emoji} failed: Error code {status}.")
+
+    async def get_karuta_message(self, token: str, account: int, channel_id: str, search_content: str, rate_limited: int):
+        url = f"https://discord.com/api/v10/channels/{channel_id}/messages?limit=50"
+        headers = self.get_headers(token, channel_id)
+        user_id = await self.get_user_id(token, channel_id)
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers = headers) as resp:
+                status = resp.status
+                if status == 200:
+                    messages = await resp.json()
+                    try:
+                        for msg in messages:
+                            referenced_author_id = msg.get('referenced_message', {}).get('author', {}).get('id')  # Get the user ID of the user being replied to
+                            if msg.get('author', {}).get('id') == self.KARUTA_BOT_ID and user_id == referenced_author_id:
+                                if search_content == self.KARUTA_CARD_TRANSFER_TITLE and msg.get('embeds') and self.KARUTA_CARD_TRANSFER_TITLE == msg['embeds'][0].get('title'):
+                                    print(f"✅ [Account #{account}] Retrieved card transfer message.")
+                                    return msg
+                                elif search_content == self.KARUTA_MULTITRADE_LOCK_MESSAGE and self.KARUTA_MULTITRADE_LOCK_MESSAGE in msg.get('content', ''):
+                                    print(f"✅ [Account #{account}] Retrieved multitrade lock message.")
+                                    return msg
+                                elif search_content == self.KARUTA_MULTITRADE_CONFIRM_MESSAGE and self.KARUTA_MULTITRADE_CONFIRM_MESSAGE in msg.get('content', ''):
+                                    print(f"✅ [Account #{account}] Retrieved multitrade confirm message.")
+                                    return msg
+                                elif search_content == self.KARUTA_BURN_TITLE and msg.get('embeds') and self.KARUTA_BURN_TITLE == msg['embeds'][0].get('title'):
+                                    print(f"✅ [Account #{account}] Retrieved burn message.")
+                                    return msg
+                                elif search_content == self.KARUTA_MULTIBURN_TITLE and msg.get('embeds') and self.KARUTA_MULTIBURN_TITLE == msg['embeds'][0].get('title'):
+                                    print(f"✅ [Account #{account}] Retrieved multiburn message.")
+                                    return msg
+                    except (KeyError, IndexError):
+                        pass
+                elif status == 429 and rate_limited < self.RATE_LIMIT:
+                    rate_limited += 1
+                    retry_after = 1  # seconds
+                    print(f"⚠️ [Account #{account}] Retrieve message failed ({rate_limited}/{self.RATE_LIMIT}): Rate limited, retrying after {retry_after}s.")
+                    await asyncio.sleep(retry_after)
+                    return await self.get_karuta_message(token, account, channel_id, search_content, rate_limited)
+                else:
+                    print(f"❌ [Account #{account}] Retrieve message failed: Error code {status}.")
+                    return None
+                print(f"❌ [Account #{account}] Retrieve message failed: Message '{search_content}' not found in recent messages.")
+                return None
+
+    async def get_server_id(self, token: str, account: int, channel_id: str):
+        url = f"https://discord.com/api/v10/channels/{channel_id}"
+        headers = self.get_headers(token, channel_id)
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers = headers) as resp:
+                status = resp.status
+                if status != 200:
+                    print(f"❌ [Account #{account}] Retrieve Guild ID failed: Error code {status}.")
+                    return None
+                data = await resp.json()
+                return data.get("guild_id")
+
+    async def get_payload(self, token: str, account: int, channel_id: str, button_string: str, message: dict):
+        button_bot_id = message.get('author', {}).get('id')
+        components = message.get('components', [])
+        for action_row in components:
+            for button in action_row.get('components', []):
+                button_emoji = button.get('emoji', {}).get('name') or ''
+                button_label = button.get('label', '')
+                if button_string in button_emoji + button_label:
+                    custom_id = button.get('custom_id', '')
+                    command_server_id = await self.get_server_id(token, account, channel_id)
+                    # Simulate button click via interaction callback
+                    payload = {
+                        "type": 3,  # Component interaction
+                        "nonce": str(uuid.uuid4().int >> 64),  # Unique interaction ID
+                        "guild_id": command_server_id,
+                        "channel_id": channel_id,
+                        "message_flags": 0,
+                        "message_id": message.get('id', ''),
+                        "application_id": button_bot_id,
+                        "session_id": str(uuid.uuid4()),
+                        "data": {
+                            "component_type": 2,
+                            "custom_id": custom_id
+                        }
+                    }
+                    print(f"✅ [Account #{account}] Found {button_string} button successfully.")
+                    return payload
+        return None
 
     async def burn_non_pog_cards(self, tokens_to_burn: list[str], channel_id: str):
         for token in tokens_to_burn:
