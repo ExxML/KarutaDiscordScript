@@ -5,11 +5,15 @@ import aiohttp
 import json
 import sys
 
-class SpecialEventGrabber():
+class ServerDropChecker():
     def __init__(self, main):
         self.main = main
+        if self.main.SPECIAL_EVENT:
+            self.init_special_event_tokens_dict()
 
-        # Set up special event tokens dictionary
+        self.KARUTA_SERVER_ACTIVITY_DROP_MESSAGE = "I'm dropping 3 cards since this server is currently active!"
+
+    def init_special_event_tokens_dict(self):
         try:
             with open("tokens/special_event_tokens.json", "r", encoding = "utf-8") as special_event_tokens_file:
                 self.special_event_tokens_dict = json.load(special_event_tokens_file)
@@ -65,8 +69,6 @@ class SpecialEventGrabber():
                 )
             )
             sys.exit()
-        
-        self.KARUTA_SERVER_ACTIVITY_DROP_MESSAGE = "I'm dropping 3 cards since this server is currently active!"
 
     async def add_special_event_reactions(self, channel_id: str, message: dict):
         try:

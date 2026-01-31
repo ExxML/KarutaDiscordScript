@@ -1,4 +1,4 @@
-from special_event_grabber import SpecialEventGrabber
+from server_drop_checker import ServerDropChecker
 from command_checker import CommandChecker
 from token_extractor import TokenExtractor
 from config import Config
@@ -233,7 +233,7 @@ class DropScript():
                     user_id = (await resp.json()).get('id')
         return user_id
 
-    async def get_drop_message(self, token: str, account: int, channel_id: str, special_event: bool):
+    async def get_drop_message(self, token: str, account: int, channel_id: str, secondary_special_event_check: bool):
         url = f"https://discord.com/api/v10/channels/{channel_id}/messages?limit=5"
         headers = self.get_headers(token, channel_id)
         user_id = await self.get_user_id(token, channel_id)
@@ -255,7 +255,7 @@ class DropScript():
                                     f"<@{user_id}> {self.KARUTA_DROP_MESSAGE}" in msg.get('content', ''),
                                     self.KARUTA_EXPIRED_DROP_MESSAGE not in msg.get('content', '')
                                 ]):
-                                    if special_event:
+                                    if secondary_special_event_check:
                                         print(f"✅ [Account #{account}] Retrieved drop message (watching special event).")
                                     else:
                                         print(f"✅ [Account #{account}] Retrieved drop message.")
@@ -539,7 +539,7 @@ class DropScript():
         drop_message = random.choice(self.DROP_COMMANDS) + random.choice(self.RANDOM_ADDON)
         sent = await self.send_message(token, account, channel_id, drop_message, 0)
         if sent:
-            drop_message = await self.get_drop_message(token, account, channel_id, special_event = False)
+            drop_message = await self.get_drop_message(token, account, channel_id, secondary_special_event_check = False)
             if drop_message:
                 drop_message_id = drop_message.get('id')
                 # Note that there is no need to wait for the CardCompanion message because get_drop_message() only returns after all Karuta emojis have been added, by which time CardCompanion should have already identified the drop
@@ -634,9 +634,9 @@ class DropScript():
                 if self.SPECIAL_EVENT:
                     if self.ONLY_GRAB_POG_CARDS:  # Extra delay is only necessary if no cards were grabbed (if self.ONLY_GRAB_POG_CARDS = True)
                         await asyncio.sleep(4)  # Extra delay to wait for special event emojis
-                    drop_message = await self.get_drop_message(token, account, channel_id, special_event = True)
+                    drop_message = await self.get_drop_message(token, account, channel_id, secondary_special_event_check = True)
                     if len(drop_message.get('reactions', [])) > 3:  # 3 cards + special event emoji(s)
-                        await self.special_event_grabber.add_special_event_reactions(channel_id, drop_message)
+                        await self.server_drop_checker.add_special_event_reactions(channel_id, drop_message)
 
                 # If only grabbing pog cards, then only the dropper will ever be active
                 # Hence, non-droppers should never send random messages in the channel; only the dropper will
@@ -774,8 +774,8 @@ class DropScript():
         await self.run_command_checkers()  # if any
         await self.set_token_dictionaries()
 
-        if self.SPECIAL_EVENT:
-            self.special_event_grabber = SpecialEventGrabber(main = self)
+        if self.SPECIAL_EVENT or self.GRAB_SERVER_POG_CARDS:
+            self.server_drop_checker = ServerDropChecker(main = self)
 
         if self.ONLY_GRAB_POG_CARDS:
             print("\n❗ Only pog cards (as defined by CardCompanion) will be grabbed.")
