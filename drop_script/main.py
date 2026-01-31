@@ -36,6 +36,7 @@ class DropScript():
         self.KARUTA_MULTITRADE_CONFIRM_MESSAGE = "This trade has been locked."
         self.KARUTA_BURN_TITLE = "Burn Card"
         self.KARUTA_MULTIBURN_TITLE = "Burn Cards"
+        self.KARUTA_ITEM_PURCHASE_TITLE = "Item Purchase"
 
         self.CARD_COMPANION_BOT_ID = "1380936713639166082"
         self.CARD_COMPANION_POG_EMOJIS = [":no_1:", ":no_2:", ":no_3:"]
@@ -48,8 +49,9 @@ class DropScript():
         } # Use card number instead of emoji in terminal output for better readability
 
         self.RANDOM_ADDON = ['', ' ', ' !', ' :D', ' w']
-        self.DROP_MESSAGES = [f"{self.KARUTA_PREFIX}drop", f"{self.KARUTA_PREFIX}d"]
-        self.BURN_MESSAGES = [f"{self.KARUTA_PREFIX}burn", f"{self.KARUTA_PREFIX}b"]
+        self.DROP_COMMANDS = [f"{self.KARUTA_PREFIX}drop", f"{self.KARUTA_PREFIX}d"]
+        self.BURN_COMMANDS = [f"{self.KARUTA_PREFIX}burn", f"{self.KARUTA_PREFIX}b"]
+        self.BUY_EXTRA_GRAB_COMMAND = f"{self.KARUTA_PREFIX}buy extra grab"
         self.RANDOM_COMMANDS = [
             f"{self.KARUTA_PREFIX}reminders", f"{self.KARUTA_PREFIX}rm", f"{self.KARUTA_PREFIX}rm", 
             f"{self.KARUTA_PREFIX}rm", f"{self.KARUTA_PREFIX}rm", f"{self.KARUTA_PREFIX}rm", 
@@ -431,6 +433,9 @@ class DropScript():
                                 elif search_content == self.KARUTA_MULTIBURN_TITLE and msg.get('embeds') and self.KARUTA_MULTIBURN_TITLE == msg['embeds'][0].get('title'):
                                     print(f"✅ [Account #{account}] Retrieved multiburn message.")
                                     return msg
+                                elif search_content == self.KARUTA_ITEM_PURCHASE_TITLE and msg.get('embeds') and self.KARUTA_ITEM_PURCHASE_TITLE == msg['embeds'][0].get('title'):
+                                    print(f"✅ [Account #{account}] Retrieved item purchase message.")
+                                    return msg
                     except (KeyError, IndexError):
                         pass
                 elif status == 429 and rate_limited < self.RATE_LIMIT:
@@ -489,9 +494,11 @@ class DropScript():
     async def burn_non_pog_cards(self, tokens_to_burn: list[str], channel_id: str):
         for token in tokens_to_burn:
             account = self.tokens.index(token) + 1
-            await asyncio.sleep(random.uniform(10, 180))  # Random delay between accounts burning. Note that this function is ran asynchronously, so long delays are fine
-            self.send_message(token, account, channel_id, random.choice(self.BURN_MESSAGES), 0)
+            await asyncio.sleep(random.uniform(5, 90))  # Random delay between accounts burning. Note that this function is ran asynchronously, so long delays should be fine
+            await self.pause_event.wait()  # Check if need to pause
+            self.send_message(token, account, channel_id, random.choice(self.BURN_COMMANDS), 0)
             await asyncio.sleep(random.uniform(5, 8))  # Wait for Karuta burn message
+            await self.pause_event.wait()  # Check if need to pause
             burn_message = await self.get_karuta_message(token, account, channel_id, self.KARUTA_BURN_TITLE, 0)
             if burn_message:
                 payload = await self.get_payload(token, account, channel_id, '🔥', burn_message)
@@ -507,9 +514,29 @@ class DropScript():
                 else:
                     print(f"❌ [Account #{account}] Card burn failed: 🔥 button not found.")
 
+    async def attempt_buy_extra_grabs(self, token: str, account: int, channel_id: str, num_pog_cards: int):
+        num_extra_grabs_purchased = num_pog_cards - 1
+        self.send_message(token, account, channel_id, self.BUY_EXTRA_GRAB_COMMAND + f" {num_extra_grabs_purchased}", 0)  # Note that num_pog_cards > 1, so -1 is safe
+        await asyncio.sleep(random.uniform(5, 8))  # Wait for Karuta item purchase message
+        await self.pause_event.wait()  # Check if need to pause
+        extra_grab_purchase_message = await self.get_karuta_message(token, account, channel_id, self.KARUTA_ITEM_PURCHASE_TITLE, 0)
+        if extra_grab_purchase_message:
+            payload = await self.get_payload(token, account, channel_id, '✅', extra_grab_purchase_message)
+            if payload is not None:
+                async with aiohttp.ClientSession() as session:
+                    headers = self.get_headers(token, channel_id)
+                    async with session.post("https://discord.com/api/v10/interactions", headers = headers, json = payload) as resp:
+                        status = resp.status
+                        if status == 204:
+                            print(f"✅ [Account #{account}] Purchased {num_extra_grabs_purchased} extra grabs successfully.")
+                        else:
+                            print(f"❌ [Account #{account}] Extra grab purchase failed: Error code {status}.")
+            else:
+                print(f"❌ [Account #{account}] Extra grab purchase failed: ✅ button not found.")
+
     async def drop_and_grab(self, token: str, account: int, channel_id: str, channel_tokens: list[str]):
         num_channel_tokens = len(channel_tokens)
-        drop_message = random.choice(self.DROP_MESSAGES) + random.choice(self.RANDOM_ADDON)
+        drop_message = random.choice(self.DROP_COMMANDS) + random.choice(self.RANDOM_ADDON)
         sent = await self.send_message(token, account, channel_id, drop_message, 0)
         if sent:
             drop_message = await self.get_drop_message(token, account, channel_id, special_event = False)
@@ -600,7 +627,9 @@ class DropScript():
                             await asyncio.sleep(random.uniform(0.5, 3.5))
                         if self.BURN_NON_POG_CARDS and tokens_to_burn:
                             asyncio.create_task(self.burn_non_pog_cards(tokens_to_burn, channel_id))
-                
+
+                await self.pause_event.wait()  # Check if need to pause
+
                 # Grab special event emoji on special event account
                 if self.SPECIAL_EVENT:
                     if self.ONLY_GRAB_POG_CARDS:  # Extra delay is only necessary if no cards were grabbed (if self.ONLY_GRAB_POG_CARDS = True)
@@ -612,7 +641,7 @@ class DropScript():
                 # If only grabbing pog cards, then only the dropper will ever be active
                 # Hence, non-droppers should never send random messages in the channel; only the dropper will
                 if self.ONLY_GRAB_POG_CARDS:
-                    if random.choice([True, True, False]):  # 66% chance of sending random commands/messages
+                    if random.choice([True, True, True, False]):  # 75% chance of sending random commands/messages
                         for _ in range(random.randint(1, 3)):
                             random_msg_list = random.choice([self.RANDOM_COMMANDS, self.RANDOM_MESSAGES])
                             random_msg = random.choice(random_msg_list)
@@ -631,6 +660,13 @@ class DropScript():
                                 random_msg = random.choice(random_msg_list)
                                 await self.send_message(msg_token, msg_account, channel_id, random_msg, self.RATE_LIMIT)
                                 await asyncio.sleep(random.uniform(1, 4))
+
+                await self.pause_event.wait()  # Check if need to pause
+
+                # Dropper may attempt to buy extra grabs after using extra grabs
+                num_pog_cards = len(pog_cards)
+                if self.ATTEMPT_BUY_EXTRA_GRABS and self.ATTEMPT_EXTRA_POG_GRABS and num_pog_cards > 1:
+                    await self.attempt_buy_extra_grabs(token, account, channel_id, num_pog_cards)
 
         else:
             if self.TERMINAL_VISIBILITY:
