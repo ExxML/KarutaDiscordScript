@@ -10,8 +10,12 @@ class ServerDropChecker():
         self.main = main
         if self.main.SPECIAL_EVENT:
             self.init_special_event_tokens_dict()
+        if self.main.GRAB_SERVER_POG_CARDS:
+            self.init_server_token()
 
         self.KARUTA_SERVER_ACTIVITY_DROP_MESSAGE = "I'm dropping 3 cards since this server is currently active!"
+
+        asyncio.create_task(self.run_server_drop_checker())
 
     def init_special_event_tokens_dict(self):
         try:
@@ -21,25 +25,29 @@ class ServerDropChecker():
                     "any": "specialEventToken1",
                     "🌼": "specialEventToken2",
                 }
+                printed_example_special_event_tokens_dict = dedent(
+                    """
+                    Example:
+                    {
+                        "any": "specialEventToken1", <- This token will grab the special event emojis that the other accounts do not grab
+                        "🌼": "specialEventToken2"   <- This token will exclusively grab the 🌼 emoji
+                    }
+                    """
+                )
                 if not (
                     isinstance(self.special_event_tokens_dict, dict)
                     and all(isinstance(k, str) and isinstance(v, str) for k, v in self.special_event_tokens_dict.items())
                 ):
                     input(
-                        "\n⛔ Special Event Token Error ⛔\nExpected a dictionary with string keys and values.\n" +
-                        dedent(
-                            """
-                            Example:
-                            {
-                                "any": "specialEventToken1", <- This token will grab the emojis that the other accounts do not grab
-                                "🌼": "specialEventToken2"   <- This token will exclusively grab the 🌼 emoji
-                            }"""
-                        )
+                        "\n⛔ Special Event Token Format Error ⛔\nExpected a dictionary in special_event_tokens.json with string keys and values.\n" +
+                        printed_example_special_event_tokens_dict
                     )
                     sys.exit()
                 elif self.special_event_tokens_dict == {}:
-                    input("\n⛔ Special Event Token Error ⛔\nNo values entered in special_event_tokens.json).\n" +
-                                "If you wish to disable the Special Event Grabber, set self.SPECIAL_EVENT to False in config.py."
+                    input(
+                        "\n⛔ Special Event Token Error ⛔\nNo valid values entered in special_event_tokens.json.\n" +
+                        printed_example_special_event_tokens_dict +
+                        "\nIf you wish to disable the Special Event Grabber, set self.SPECIAL_EVENT to False in config.py."
                     )
                     sys.exit()
                 elif self.special_event_tokens_dict == example_special_event_tokens_dict:
@@ -48,7 +56,6 @@ class ServerDropChecker():
                     )
                     sys.exit()
                 else:
-                    asyncio.create_task(self.run_special_event_grabber())
                     print(f"\n👀 Watching for special event reactions in {len(self.main.DROP_CHANNEL_IDS)} script drop channel(s) " +
                             f"and {len(self.main.SERVER_ACTIVITY_DROP_CHANNEL_IDS)} server activity drop channel(s).")
         except FileNotFoundError:
@@ -58,16 +65,43 @@ class ServerDropChecker():
             sys.exit()
         except json.JSONDecodeError:
             input(
-                "\n⛔ Special Event Token Error ⛔\nExpected a dictionary with string keys and values.\n" +
-                dedent(
-                    """
-                    Example:
-                    {
-                        "any": "specialEventToken1", <- This token will grab the emojis that the other accounts do not grab
-                        "🌼": "specialEventToken2"   <- This token will exclusively grab the 🌼 emoji
-                    }"""
-                )
+                "\n⛔ Special Event Token Format Error ⛔\nExpected a dictionary in special_event_tokens.json with string keys and values.\n" +
+                printed_example_special_event_tokens_dict
             )
+            sys.exit()
+
+    def init_server_token(self):
+        try:
+            with open("tokens/server_token.json", "r", encoding = "utf-8") as server_token_file:
+                self.server_token = json.load(server_token_file)
+                example_server_token = "exampleServerToken"
+                if not isinstance(self.server_token, str):
+                    input(f'\n⛔ Server Token Format Error ⛔\nExpected a string in server_token.json. Example: "{example_server_token}"')
+                    sys.exit()
+                elif self.server_token == "":
+                    input(f'\n⛔ Server Token Error ⛔\nNo valid values entered in server_token.json. Example: "{example_server_token}"\n' +
+                                "If you wish to disable the Server Drop Grabber, set self.GRAB_SERVER_POG_CARDS to False in config.py."
+                    )
+                    sys.exit()
+                elif self.server_token == example_server_token:
+                    input("\n⛔ Server Token Error ⛔\nPlease replace the example value in server_token.json with a real token.\n" +
+                                "If you wish to disable the Server Drop Grabber, set self.GRAB_SERVER_POG_CARDS to False in config.py."
+                    )
+                    sys.exit()
+                elif len(self.main.SERVER_ACTIVITY_DROP_CHANNEL_IDS) == 0:
+                    input("\n⛔ Server Activity Drop Channel Error ⛔\nPlease enter at least one channel ID in self.SERVER_ACTIVITY_DROP_CHANNEL_IDS in config.py.\n" +
+                                "If you wish to disable the Server Drop Grabber, set self.GRAB_SERVER_POG_CARDS to False in config.py."
+                    )
+                    sys.exit()
+                else:
+                    print(f"\n👀 Watching for pog cards in {len(self.main.SERVER_ACTIVITY_DROP_CHANNEL_IDS)} server activity drop channel(s).")
+        except FileNotFoundError:
+            input("\n⛔ Server Token Error ⛔\nNo server_token.json file found.\n" +
+                        "If you wish to disable the Server Drop Grabber, set self.GRAB_SERVER_POG_CARDS to False in config.py."
+            )
+            sys.exit()
+        except json.JSONDecodeError:
+            input(f'\n⛔ Server Token Format Error ⛔\nExpected a string in server_token.json. Example: "{example_server_token}"')
             sys.exit()
 
     async def add_special_event_reactions(self, channel_id: str, message: dict):
@@ -90,7 +124,7 @@ class ServerDropChecker():
             print(f"❌ [Special Event Account] Retrieve message failed: IndexError.")
             pass
 
-    async def run_special_event_grabber(self):
+    async def run_server_drop_checker(self):
          # history contains the messages that have been previously reacted to (key = message ID, value = number of emojis reacted)
          # Note that if the number of distinct emojis has changed, the message will be considered unseen! This way, if there are multiple special event emojis, all of them will be guaranteed to be grabbed.
         history: dict[str, int] = {} 
