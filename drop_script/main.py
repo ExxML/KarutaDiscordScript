@@ -343,7 +343,7 @@ class DropScript():
                 else:
                     print(f"❌ [Account #{account}] Retrieve CardCompanion message failed: Error code {status}.")
                     return []
-                # In the case CardCompanion does not display a message containing a pog card
+                # In the case CardCompanion does not display a message containing a pog card, return silently
                 return []
 
     async def add_reaction(self, token: str, account: int, channel_id: str, message_id: str, emoji: str, rate_limited: int):
