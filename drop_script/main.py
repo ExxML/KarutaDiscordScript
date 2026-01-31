@@ -49,6 +49,7 @@ class DropScript():
 
         self.RANDOM_ADDON = ['', ' ', ' !', ' :D', ' w']
         self.DROP_MESSAGES = [f"{self.KARUTA_PREFIX}drop", f"{self.KARUTA_PREFIX}d"]
+        self.BURN_MESSAGES = [f"{self.KARUTA_PREFIX}burn", f"{self.KARUTA_PREFIX}b"]
         self.RANDOM_COMMANDS = [
             f"{self.KARUTA_PREFIX}reminders", f"{self.KARUTA_PREFIX}rm", f"{self.KARUTA_PREFIX}rm", 
             f"{self.KARUTA_PREFIX}rm", f"{self.KARUTA_PREFIX}rm", f"{self.KARUTA_PREFIX}rm", 
@@ -334,14 +335,14 @@ class DropScript():
                                     return card_numbers
                                 else:
                                     print(f"❌ [Account #{account}] Unable to parse pog card numbers from CardCompanion message.")
-                                    return None
+                                    return []
                     except (KeyError, IndexError):
                         pass
                 else:
                     print(f"❌ [Account #{account}] Retrieve CardCompanion message failed: Error code {status}.")
-                    return None
-                # In the case CardCompanion does not return a message containing a pog card, return None
-                return None
+                    return []
+                # In the case CardCompanion does not display a message containing a pog card
+                return []
 
     async def add_reaction(self, token: str, account: int, channel_id: str, message_id: str, emoji: str, rate_limited: int):
         url = f"https://discord.com/api/v10/channels/{channel_id}/messages/{message_id}/reactions/{emoji}/@me"
@@ -488,33 +489,23 @@ class DropScript():
     async def burn_non_pog_cards(self, tokens_to_burn: list[str], channel_id: str):
         for token in tokens_to_burn:
             account = self.tokens.index(token) + 1
-        # TODO
-
-    async def run_command_checkers(self):
-        if self.COMMAND_CHANNEL_IDS:
-            for channel_id in self.COMMAND_CHANNEL_IDS:
-                command_checker = CommandChecker(
-                    main = self,
-                    tokens = self.tokens,
-                    command_user_ids = self.COMMAND_USER_IDS,
-                    command_channel_id = channel_id,
-                    karuta_prefix = self.KARUTA_PREFIX,
-                    karuta_bot_id = self.KARUTA_BOT_ID,
-                    rate_limit = self.RATE_LIMIT
-                )
-                asyncio.create_task(command_checker.run_command_checker())
-            print(f"\n🤖 Message commands are enabled in {len(self.COMMAND_CHANNEL_IDS)} channel(s).")
-        else:
-            print("\n🤖 Message commands are disabled.")
-
-    async def set_token_dictionaries(self):
-        self.token_channel_dict = {}
-        tokens = self.shuffled_tokens if self.shuffled_tokens else self.tokens
-        for index, token in enumerate(tokens):
-            self.token_channel_dict[token] = self.DROP_CHANNEL_IDS[math.floor(index / 3)]  # Max 3 accounts per channel
-        self.channel_token_dict = defaultdict(list)
-        for k, v in self.token_channel_dict.items():
-            self.channel_token_dict[v].append(k)
+            await asyncio.sleep(random.uniform(10, 180))  # Random delay between accounts burning. Note that this function is ran asynchronously, so long delays are fine
+            self.send_message(token, account, channel_id, random.choice(self.BURN_MESSAGES), 0)
+            await asyncio.sleep(random.uniform(5, 8))  # Wait for Karuta burn message
+            burn_message = await self.get_karuta_message(token, account, channel_id, self.KARUTA_BURN_TITLE, 0)
+            if burn_message:
+                payload = await self.get_payload(token, account, channel_id, '🔥', burn_message)
+                if payload is not None:
+                    async with aiohttp.ClientSession() as session:
+                        headers = self.get_headers(token, channel_id)
+                        async with session.post("https://discord.com/api/v10/interactions", headers = headers, json = payload) as resp:
+                            status = resp.status
+                            if status == 204:
+                                print(f"✅ [Account #{account}] Card burned successfully.")
+                            else:
+                                print(f"❌ [Account #{account}] Card burn failed: Error code {status}.")
+                else:
+                    print(f"❌ [Account #{account}] Card burn failed: 🔥 button not found.")
 
     async def drop_and_grab(self, token: str, account: int, channel_id: str, channel_tokens: list[str]):
         num_channel_tokens = len(channel_tokens)
@@ -582,7 +573,7 @@ class DropScript():
                             await self.add_reaction(grab_token, grab_account, channel_id, drop_message_id, emoji, 0)
                             await asyncio.sleep(random.uniform(0.5, 3.5))
                         if self.BURN_NON_POG_CARDS and tokens_to_burn:
-                            await self.burn_non_pog_cards(tokens_to_burn, channel_id)
+                            asyncio.create_task(self.burn_non_pog_cards(tokens_to_burn, channel_id))
 
                 else:
                     # If there are no pog cards and grabbing all cards, 
@@ -608,7 +599,7 @@ class DropScript():
                             await self.add_reaction(grab_token, grab_account, channel_id, drop_message_id, emoji, 0)
                             await asyncio.sleep(random.uniform(0.5, 3.5))
                         if self.BURN_NON_POG_CARDS and tokens_to_burn:
-                            await self.burn_non_pog_cards(tokens_to_burn, channel_id)
+                            asyncio.create_task(self.burn_non_pog_cards(tokens_to_burn, channel_id))
                 
                 # Grab special event emoji on special event account
                 if self.SPECIAL_EVENT:
@@ -640,6 +631,7 @@ class DropScript():
                                 random_msg = random.choice(random_msg_list)
                                 await self.send_message(msg_token, msg_account, channel_id, random_msg, self.RATE_LIMIT)
                                 await asyncio.sleep(random.uniform(1, 4))
+
         else:
             if self.TERMINAL_VISIBILITY:
                 hwnd = win32console.GetConsoleWindow()
@@ -673,7 +665,7 @@ class DropScript():
     async def run_instance(self, channel_num: int, channel_id: str, start_delay: int, channel_tokens: list[str], time_limit_seconds: int):
         try:
             num_accounts = len(channel_tokens)
-            delay = 30 * 60 / num_accounts  # Ideally 10 min delay per account (3 accounts)
+            delay = 30 * 60 / num_accounts  # 10 min delay per account (if 3 accounts per channel)
             # Breaking up start delay into multiple steps to check if need to pause
             random_start_delay_per_step = random.uniform(2, 3)
             num_start_delay_steps = round(start_delay / random_start_delay_per_step)
@@ -710,6 +702,32 @@ class DropScript():
                             await self.send_message(token, self.tokens.index(token) + 1, channel_id, random.choice(self.RANDOM_COMMANDS), 0)
         except Exception as e:
             print(f"\n❌ Error in Channel #{channel_num} Script Instance ❌\n{e}")
+
+    async def run_command_checkers(self):
+        if self.COMMAND_CHANNEL_IDS:
+            for channel_id in self.COMMAND_CHANNEL_IDS:
+                command_checker = CommandChecker(
+                    main = self,
+                    tokens = self.tokens,
+                    command_user_ids = self.COMMAND_USER_IDS,
+                    command_channel_id = channel_id,
+                    karuta_prefix = self.KARUTA_PREFIX,
+                    karuta_bot_id = self.KARUTA_BOT_ID,
+                    rate_limit = self.RATE_LIMIT
+                )
+                asyncio.create_task(command_checker.run_command_checker())
+            print(f"\n🤖 Message commands are enabled in {len(self.COMMAND_CHANNEL_IDS)} channel(s).")
+        else:
+            print("\n🤖 Message commands are disabled.")
+
+    async def set_token_dictionaries(self):
+        self.token_channel_dict = {}
+        tokens = self.shuffled_tokens if self.shuffled_tokens else self.tokens
+        for index, token in enumerate(tokens):
+            self.token_channel_dict[token] = self.DROP_CHANNEL_IDS[math.floor(index / 3)]  # Max 3 accounts per channel
+        self.channel_token_dict = defaultdict(list)
+        for k, v in self.token_channel_dict.items():
+            self.channel_token_dict[v].append(k)
 
     async def run_script(self):
         if self.SHUFFLE_ACCOUNTS:
