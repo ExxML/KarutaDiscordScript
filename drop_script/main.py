@@ -543,7 +543,7 @@ class DropScript():
             if drop_message:
                 drop_message_id = drop_message.get('id')
                 # Note that there is no need to wait for the CardCompanion message because get_drop_message() only returns after all Karuta emojis have been added, by which time CardCompanion should have already identified the drop
-                pog_cards = await self.get_card_companion_pog_cards(token, account, channel_id, drop_message_id) # Get pog card number(s) as a list (containing 1, 2, and/or 3) or None
+                pog_cards = await self.get_card_companion_pog_cards(token, account, channel_id, drop_message_id) # Get all pog card numbers as a list (containing 1, 2, and/or 3, or empty)
                 if pog_cards:
                     if self.ATTEMPT_EXTRA_POG_GRABS:
                         # If self.ATTEMPT_EXTRA_POG_GRABS = True, the dropper should attempt to grab all the pog card(s)
