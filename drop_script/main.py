@@ -310,7 +310,11 @@ class DropScript():
                 return status == 200
 
     async def get_card_companion_pog_cards(self, token: str, account: int, channel_id: str, drop_message_id: str):
-        url = f"https://discord.com/api/v10/channels/{channel_id}/messages?limit=10"
+        if account == 0:
+            account_string = "[Server Account]"
+        else:
+            account_string = f"[Account #{account}]"
+        url = f"https://discord.com/api/v10/channels/{channel_id}/messages?limit=20"
         headers = self.get_headers(token, channel_id)
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers = headers) as resp:
@@ -333,15 +337,15 @@ class DropScript():
                                         card_numbers.append(int(match.split("_")[1]))
                                 # Check if card numbers were successfully parsed
                                 if card_numbers:
-                                    print(f"✅ [Account #{account}] Identified CardCompanion pog card(s): {card_numbers}.")
+                                    print(f"✅ {account_string} Identified CardCompanion pog card(s): {card_numbers}.")
                                     return card_numbers
                                 else:
-                                    print(f"❌ [Account #{account}] Unable to parse pog card numbers from CardCompanion message.")
+                                    print(f"❌ {account_string} Unable to parse pog card numbers from CardCompanion message.")
                                     return []
                     except (KeyError, IndexError):
                         pass
                 else:
-                    print(f"❌ [Account #{account}] Retrieve CardCompanion message failed: Error code {status}.")
+                    print(f"❌ {account_string} Retrieve CardCompanion message failed: Error code {status}.")
                     return []
                 # In the case CardCompanion does not display a message containing a pog card, return silently
                 return []
@@ -352,58 +356,65 @@ class DropScript():
         async with aiohttp.ClientSession() as session:
             async with session.put(url, headers = headers) as resp:
                 status = resp.status
-                if emoji in self.EMOJIS:
+                # Get channel name
+                if channel_id in self.DROP_CHANNEL_IDS:
+                    channel_name = f"Drop Channel #{self.DROP_CHANNEL_IDS.index(channel_id) + 1}"
+                elif channel_id in self.SERVER_ACTIVITY_DROP_CHANNEL_IDS:
+                    channel_name = f"Server Activity Drop Channel #{self.SERVER_ACTIVITY_DROP_CHANNEL_IDS.index(channel_id) + 1}"
+                elif channel_id in self.COMMAND_CHANNEL_IDS:
+                    channel_name = f"Command Channel #{self.COMMAND_CHANNEL_IDS.index(channel_id) + 1}"
+                # Print result
+                if emoji in self.EMOJIS:  # when grabbing drop script cards
                     card_number = self.EMOJI_MAP.get(emoji)
+                    # Get account string
+                    if account == 0:  # Server token account
+                        account_string = f"[Server Account]"
+                    else:  # Either a ServerDropChecker grab or a regular DropScript grab
+                        account_string = f"[Account #{account}]"
                     if status == 204:
-                        print(f"✅ [Account #{account}] Grabbed card {card_number}.")
+                        print(f"✅ {account_string} Grabbed card {card_number} in {channel_name}.")
                     elif status == 401:
-                        print(f"❌ [Account #{account}] Grab card {card_number} failed: Invalid token.")
+                        print(f"❌ {account_string} Grab card {card_number} in {channel_name} failed: Invalid token.")
                     elif status == 403:
-                        print(f"❌ [Account #{account}] Grab card {card_number} failed: Token banned or insufficient permissions.")
+                        print(f"❌ {account_string} Grab card {card_number} in {channel_name} failed: Token banned or insufficient permissions.")
                     elif status == 429 and rate_limited < self.RATE_LIMIT:
                         rate_limited += 1
                         retry_after = 1  # seconds
-                        print(f"⚠️ [Account #{account}] Grab card {card_number} failed ({rate_limited}/{self.RATE_LIMIT}): Rate limited, retrying after {retry_after}s.")
+                        print(f"⚠️ {account_string} Grab card {card_number} in {channel_name} failed ({rate_limited}/{self.RATE_LIMIT}): Rate limited, retrying after {retry_after}s.")
                         await asyncio.sleep(retry_after)
                         await self.add_reaction(token, account, channel_id, message_id, emoji, rate_limited)
                     else:
-                        print(f"❌ [Account #{account}] Grab card {card_number} failed: Error code {status}.")
-                elif account == 0 and self.SPECIAL_EVENT:  # when reacting with special event emoji
-                    if channel_id in self.DROP_CHANNEL_IDS:
-                        channel_name = f"Drop Channel #{self.DROP_CHANNEL_IDS.index(channel_id) + 1}"
-                    elif channel_id in self.SERVER_ACTIVITY_DROP_CHANNEL_IDS:
-                        channel_name = f"Server Activity Drop Channel #{self.SERVER_ACTIVITY_DROP_CHANNEL_IDS.index(channel_id) + 1}"
-                    else:
-                        channel_name = "Unknown Channel"
+                        print(f"❌ {account_string} Grab card {card_number} in {channel_name} failed: Error code {status}.")
+                elif account == 0 and token in list(self.server_drop_checker.special_event_tokens_dict.values()):  # when reacting to server event emojis
                     if status == 204:
-                        print(f"✅ [Special Event Account] Reacted {emoji} in {channel_name}.")
+                        print(f"✅ [Special Event Account] Grabbed {emoji} in {channel_name}.")
                     elif status == 401:
-                        print(f"❌ [Special Event Account] React {emoji} in {channel_name} failed: Invalid token.")
+                        print(f"❌ [Special Event Account] Grab {emoji} in {channel_name} failed: Invalid token.")
                     elif status == 403:
-                        print(f"❌ [Special Event Account] React {emoji} in {channel_name} failed: Token banned or insufficient permissions.")
+                        print(f"❌ [Special Event Account] Grab {emoji} in {channel_name} failed: Token banned or insufficient permissions.")
                     elif status == 429 and rate_limited < self.RATE_LIMIT:
                         rate_limited += 1
                         retry_after = 1  # seconds
-                        print(f"⚠️ [Special Event Account] React {emoji} in {channel_name} failed ({rate_limited}/{self.RATE_LIMIT}): Rate limited, retrying after {retry_after}s.")
+                        print(f"⚠️ [Special Event Account] Grab {emoji} in {channel_name} failed ({rate_limited}/{self.RATE_LIMIT}): Rate limited, retrying after {retry_after}s.")
                         await asyncio.sleep(retry_after)
                         await self.add_reaction(token, account, channel_id, message_id, emoji, rate_limited)
                     else:
-                        print(f"❌ [Special Event Account] React {emoji} in {channel_name} failed: Error code {status}.")
-                else:  # when manually reacting with message commands
+                        print(f"❌ [Special Event Account] Grab {emoji} in {channel_name} failed: Error code {status}.")
+                elif channel_id in self.COMMAND_CHANNEL_IDS:  # when reacting using message commands
                     if status == 204:
-                        print(f"✅ [Account #{account}] Reacted {emoji}.")
+                        print(f"✅ [Account #{account}] Reacted {emoji} in {channel_name}.")
                     elif status == 401:
-                        print(f"❌ [Account #{account}] React {emoji} failed: Invalid token.")
+                        print(f"❌ [Account #{account}] React {emoji} in {channel_name} failed: Invalid token.")
                     elif status == 403:
-                        print(f"❌ [Account #{account}] React {emoji} failed: Token banned or insufficient permissions.")
+                        print(f"❌ [Account #{account}] React {emoji} in {channel_name} failed: Token banned or insufficient permissions.")
                     elif status == 429 and rate_limited < self.RATE_LIMIT:
                         rate_limited += 1
                         retry_after = 1  # seconds
-                        print(f"⚠️ [Account #{account}] React {emoji} failed ({rate_limited}/{self.RATE_LIMIT}): Rate limited, retrying after {retry_after}s.")
+                        print(f"⚠️ [Account #{account}] React {emoji} in {channel_name} failed ({rate_limited}/{self.RATE_LIMIT}): Rate limited, retrying after {retry_after}s.")
                         await asyncio.sleep(retry_after)
                         await self.add_reaction(token, account, channel_id, message_id, emoji, rate_limited)
                     else:
-                        print(f"❌ [Account #{account}] React {emoji} failed: Error code {status}.")
+                        print(f"❌ [Account #{account}] React {emoji} in {channel_name} failed: Error code {status}.")
 
     async def get_karuta_message(self, token: str, account: int, channel_id: str, search_content: str, rate_limited: int):
         url = f"https://discord.com/api/v10/channels/{channel_id}/messages?limit=50"
