@@ -124,16 +124,36 @@ class ServerDropChecker():
             print(f"❌ [Special Event Account] Retrieve message failed: IndexError.")
             pass
 
+    async def grab_pog_cards(self, token: str, channel_id: str, pog_cards: list[str], drop_message_id: str):
+        first_pog_card_index = pog_cards[0] - 1
+        first_pog_card_emoji = self.main.EMOJIS[first_pog_card_index]
+        await self.main.add_reaction(token, 0, channel_id, drop_message_id, first_pog_card_emoji, 0)
+        await asyncio.sleep(random.uniform(0.5, 3.5))
+        # Use random accounts to grab the other pog cards, if any
+        other_pog_cards = pog_cards.copy()
+        other_pog_cards.pop(0)
+        random.shuffle(other_pog_cards)
+        for pog_card in other_pog_cards:
+            emoji = self.main.EMOJIS[pog_card - 1]
+            grab_token = random.choice(self.main.tokens)
+            grab_account = self.main.tokens.index(grab_token) + 1
+            await self.main.add_reaction(grab_token, grab_account, channel_id, drop_message_id, emoji, 0)
+            await asyncio.sleep(random.uniform(0.5, 3.5))
+
     async def run_server_drop_checker(self):
-         # history contains the messages that have been previously reacted to (key = message ID, value = number of emojis reacted)
-         # Note that if the number of distinct emojis has changed, the message will be considered unseen! This way, if there are multiple special event emojis, all of them will be guaranteed to be grabbed.
-        history: dict[str, int] = {} 
-        special_event_tokens = list(self.special_event_tokens_dict.values())
+        if self.main.SPECIAL_EVENT:
+            # special_event_msg_history contains the messages that have been previously reacted to (key = message ID, value = number of emojis reacted)
+            # Note that if the number of distinct emojis has changed, the message will be considered unseen! This way, if there are multiple special event emojis, all of them will be guaranteed to be grabbed.
+            special_event_msg_history: dict[str, int] = {}
+        if self.main.GRAB_SERVER_POG_CARDS:
+            # server_pog_drop_msg_history contains the message IDs that have been previously grabbed from
+            server_pog_drop_msg_history: set[str] = set()
+        server_drop_tokens = list(self.special_event_tokens_dict.values()) + [self.server_token]
         while True:
             try:
                 for channel_id in self.main.SERVER_ACTIVITY_DROP_CHANNEL_IDS:
                     url = f"https://discord.com/api/v10/channels/{channel_id}/messages?limit=20"
-                    headers = self.main.get_headers(random.choice(special_event_tokens), channel_id)
+                    headers = self.main.get_headers(random.choice(server_drop_tokens), channel_id)
                     async with aiohttp.ClientSession() as session:
                         async with session.get(url, headers = headers) as resp:
                             status = resp.status
@@ -141,16 +161,32 @@ class ServerDropChecker():
                                 messages = await resp.json()
                                 for msg in messages:
                                     msg_id = msg.get('id')
+
+                                    # Special Event Grabber
                                     num_reactions = len(msg.get('reactions', []))
-                                    if all([
+                                    if self.main.SPECIAL_EVENT and all([
                                         num_reactions > 3,  # 3 cards + special event emoji(s)
                                         msg.get('author', {}).get('id') == self.main.KARUTA_BOT_ID,
-                                        (msg_id not in history or history.get(msg_id) != num_reactions),
+                                        (msg_id not in special_event_msg_history or special_event_msg_history.get(msg_id) != num_reactions),
                                         (self.main.KARUTA_DROP_MESSAGE in msg.get('content', '') or self.KARUTA_SERVER_ACTIVITY_DROP_MESSAGE in msg.get('content', '')),
                                         self.main.KARUTA_EXPIRED_DROP_MESSAGE not in msg.get('content', '')
                                     ]):
                                         await self.add_special_event_reactions(channel_id, msg)
-                                        history[msg_id] = num_reactions
+                                        special_event_msg_history[msg_id] = num_reactions
+                                    
+                                    # Server Drop Grabber
+                                    if self.main.GRAB_SERVER_POG_CARDS and all([
+                                        num_reactions >= 3,  # 3 cards
+                                        msg.get('author', {}).get('id') == self.main.KARUTA_BOT_ID,
+                                        (msg_id not in server_pog_drop_msg_history),
+                                        self.KARUTA_SERVER_ACTIVITY_DROP_MESSAGE in msg.get('content', ''),
+                                        self.main.KARUTA_EXPIRED_DROP_MESSAGE not in msg.get('content', '')
+                                    ]):
+                                        await asyncio.sleep(random.uniform(10, 20))  # Long delay before grabbing to avoid looking suspicious
+                                        pog_cards = await self.main.get_card_companion_pog_cards(self.server_token, 0, channel_id, msg_id)
+                                        if pog_cards:
+                                            await self.grab_pog_cards(self.server_token, channel_id, pog_cards, msg_id)
+                                            server_pog_drop_msg_history.add(msg_id)
                             else:
                                 print(f"❌ [Special Event Account] Retrieve message failed: Error code {status}.")
                                 return None
