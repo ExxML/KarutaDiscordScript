@@ -739,7 +739,7 @@ class DropScript():
                             await self.async_input_handler(f"\n⚠️ Drop Fail Limit Reached ⚠️\nThe script has failed to retrieve {self.DROP_FAIL_LIMIT} total drops. Automatically pausing drops...\nPress `Enter` if you wish to resume.\n",
                                                                             "", self.DROP_FAIL_LIMIT_REACHED_FLAG)
                     # Breaking up delay into multiple steps to check if need to pause
-                    random_delay = delay + random.uniform(0.5 * 60, 5 * 60)  # Wait an additional 0.5-5 minutes per drop
+                    random_delay = delay + random.uniform(0.5 * 60, 10 * 60)  # Wait an additional 0.5-10 minutes per drop
                     random_delay_per_step = random.uniform(2, 3)
                     num_delay_steps = round(random_delay / random_delay_per_step)
                     for _ in range(num_delay_steps):
