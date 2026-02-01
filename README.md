@@ -6,13 +6,16 @@ Karuta Discord Script is a headless Python script for Windows that mimics realis
 ![Karuta Script Preview](preview_images/drop_script_preview.png)
 
 
-## ⚠️ WARNING ⚠️
+## ⚠️ WARNINGS (PLEASE READ) ⚠️
+
+### ⚠️ **Be VERY CAREFUL** when trading between accounts. Karuta is EXTREMELY strict with alting and has quite a strong anti-cheat to prevent alts.
+
+#### ⚠️ **DO NOT** run the drop script (`main.py`) for more than 10 consecutive hours or Karuta may flag your accounts for suspicious activity. Set `self.TIME_LIMIT_HOURS_MIN` and `self.TIME_LIMIT_HOURS_MAX` in `config.py` to control the time limit.
+
+#### ⚠️ **DO NOT** run the account login script (`token_extractor.py`) too many times in a row because you will get login rate-limited by Discord Web. The cooldown after being rate-limited is typically a few hours.
+
 Discord's Terms of Service explicitly prohibits self-bots (as of August 2025, and for the foreseeable future). Unauthorized use of this script *could* result in account bans. Use at your own risk.
-
-*In my experience, no accounts using this script have been banned by Discord, but I still recommend using throwaway accounts just to be safe.*
-
-Note: This script extracts user tokens from Discord accounts using Selenium and Undetected-ChromeDriver. To keep your accounts safe, DO NOT share these tokens (tokens.json) with anyone else.
-
+- *In my experience, no accounts using this script have been banned by Discord, but I still recommend using throwaway accounts just to be safe.*
 
 ## Setup (Do this first!)
 1. Clone the repository.
@@ -44,12 +47,6 @@ pip install -r requirements.txt
 
 > [!TIP]
 > For the script to auto-grab all dropped cards, the number of accounts you input must be a **multiple of 3** (3 accounts will *work together* in each drop channel). Make sure no accounts have 2FA enabled, and all accounts should have message access in all of `self.COMMAND_CHANNEL_IDS` and `self.DROP_CHANNEL_IDS` in `config.py`.
-
-
-## Warnings
-
-#### ⚠️ **DO NOT** run the drop script (`main.py`) for more than 10 consecutive hours or Karuta may flag your accounts for suspicious activity. Set `self.TIME_LIMIT_HOURS_MIN` and `self.TIME_LIMIT_HOURS_MAX` in `config.py` to control the time limit.
-#### ⚠️ **DO NOT** run the account login script (`token_extractor.py`) too many times in a row because you will get login rate-limited by Discord Web. The cooldown after being rate-limited is typically a few hours.
 
 
 ## Usage Tips/Features
