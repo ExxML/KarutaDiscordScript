@@ -26,14 +26,12 @@ pip install -r requirements.txt
 6. Create/buy accounts for the script to use! I **highly recommend** purchasing FULLY VERIFIED alt accounts from a trusted shop. A fully verified account means that it has a verified email AND phone number- a phone number connected to the account is imperative because Discord frequently phone-locks suspicious accounts. (You don't need to have access to the phone, it just needs to be connected to your account.)
     - If you decide to buy accounts, I recommend purchasing from https://shop.xyliase.com/product/discord-accounts-%7C-fully-verified-tokens (I am not affiliated with this shop). As of July 2025, there is plenty of cheap stock and customer service is excellent.
 7. Edit the `__init__` constants in `config.py`.
-- `self.COMMAND_USER_IDS` restricts message commands to these accounts- leave this list empty if you want to allow *any* user to send commands. `self.COMMAND_CHANNEL_IDS` are the channels where you are allowed to send message commands- leave this list empty if you want to disable commands entirely.
-  - Read more about how to use message commands in Command Checker under Usage Tips/Features below.
-- `self.DROP_CHANNEL_IDS` is a list of channels where the script will drop cards. 
-  - **You MUST have at least 1 drop channel for every 3 accounts used.**
-- `self.SERVER_ACTIVITY_DROP_CHANNEL_IDS` is used for two purposes:
-  1. During a Karuta special event, the special event account(s) will track these channels and automatically react to the special event emoji, if found.
-  2. If CardCompanion is in use, the server drop account will also track these channels and automatically grab pog cards, if the setting is enabled.
-  - Read more about how these two features work in Usage Tips/Features below.
+    - `self.DROP_CHANNEL_IDS` is a list of channels where the script will drop cards. 
+      - **You MUST have at least 1 drop channel for every 3 accounts used.**
+    - `self.SERVER_ACTIVITY_DROP_CHANNEL_IDS` is used for two purposes:
+      1. During a Karuta special event, the special event account(s) will track these channels and automatically react to the special event emoji, if found.
+      2. If CardCompanion is in use, the server drop account will also track these channels and automatically grab pog cards, if the setting is enabled.
+      - Read more about how these two features work in Usage Tips/Features below.
 8. Enter your accounts into the script. You can accomplish this via two ways:
     1. Enter your emails and passwords in `self.ACCOUNTS` in `token_extractor.py` using the following format, and then run `token_extractor.py`.
         ```python
@@ -57,7 +55,9 @@ pip install -r requirements.txt
 ## Usage Tips/Features
 1. **Command Checker**
     - This script has a built-in command system that allows users to send messages, reactions, and button presses from any of the accounts in `tokens.json`.
-    - In `config.py`, `self.COMMAND_USER_IDS` restricts the users who will be allowed to use commands. You can also set `self.COMMAND_CHANNEL_IDS` to an empty list to disable message commands entirely.
+    - To set this feature up, edit the following constants in `config.py`:
+      - `self.COMMAND_USER_IDS` restricts message commands to these accounts- leave this list empty if you want to allow *any* user to send commands. 
+      - `self.COMMAND_CHANNEL_IDS` are the channels where you are allowed to send message commands- leave this list empty if you want to disable commands entirely.
     - To send a command from any account, manually send a message from a `self.COMMAND_USER_IDS` account in any `self.COMMAND_CHANNEL_IDS` channel using the following format (without angle brackets):
         ```bash
         cmd <account_number |OR| account_number_range |OR| 'all'> <message>
@@ -76,9 +76,9 @@ pip install -r requirements.txt
 > - Automatic confirmation for the `kburn` command will not be supported. Use the `/b 🔥` command to manually confirm the burn, or use `kmultiburn` instead.
 
 2. **Special Event Grabber**
-    - If there is a special event going on in Karuta, you can set up an account to automatically react to the event emoji in all the drop channels and server activity drop channels.
+    - If there is a special event going on in Karuta, you can set up an account to automatically react to the event emoji(s) in all the drop channels and server activity drop channels. This feature supports multiple event emojis!
     - To set this feature up:
-      1. Set `self.SPECIAL_EVENT = True` in `config.py`
+      1. Set `self.SPECIAL_EVENT = True` in `config.py`.
       2. Enter string key and string value pairs in `special_event_tokens.json` to automatically react to drops with the desired emoji, on the desired account.
           - For example, if I want "exampleSpecialToken2" to only grab 🌼 and "exampleSpecialToken1" to grab everything else, I would do:
             ```bash
@@ -90,16 +90,30 @@ pip install -r requirements.txt
             - Note: "any" is the only valid special key; all other keys must be emojis. 
             - Keep in mind that there cannot be duplicate keys in a dictionary; you can only have one token associated with each emoji.
           - All special event tokens must, of course, have access to all `self.DROP_CHANNEL_IDS` and `self.SERVER_ACTIVITY_DROP_CHANNEL_IDS`.
-      3. Enter the list of channels you want to track in `self.SERVER_ACTIVITY_DROP_CHANNEL_IDS`. Ignore the name of the constant; all drops in these channels will be tracked, regardless of whether they were generated by a user or from server activity.
+      3. Enter the list of channels you want to track in `self.SERVER_ACTIVITY_DROP_CHANNEL_IDS`. All drops in these channels will be tracked, regardless of whether they were generated by a user or from server activity.
+      4. Run `main.py`.
     - When there is no special event, you should set `self.SPECIAL_EVENT = False` to avoid accidentally reacting to drops.
-    - Note: The Special Event Grabber targets the last emoji in the list of reactions. If there are multiple special event emojis, it will only detect and grab the last one.
 
+3. **Server Drop Grabber**
+    - You can set up accounts to watch server activity drop channels and automatically grab pog cards, as defined by CardCompanion. Note that you must have CardCompanion pog filters set up in order to use this feature.
+    - To set this feature up:
+      1. Set `self.GRAB_SERVER_POG_CARDS = True` in `config.py`.
+      2. Enter a string in `server_token.json` with the token that you want to grab all the server pog cards on
+      3. Enter the list of channels you want to track in `self.SERVER_ACTIVITY_DROP_CHANNEL_IDS`. ONLY server activity generated drops in these channels will be tracked.
+      4. Run `main.py`.
 
-## Compatibility
+## Compatibility With Other Bots
 - This script can be used in conjunction with [CardCompanion](https://top.gg/bot/1380936713639166082), a Discord bot that can analyze and notify you of rare cards being dropped. If a "pog card" is dropped (a card that matches a certain stat (ex. >1000 wl)), CardCompanion will include an emoji in the message (see red circle below), indicating which card is the "pog card". The script will then ensure the grabber of the card is the same as the dropper, boosting the card stats and avoiding suspicion. If CardCompanion is not being used OR a "pog card" was not dropped, the grabber will be randomized by default.
 
     ![Card Companion Preview](preview_images/card_companion_preview.png)
-    - If you have set up CardCompanion and you want to ONLY grab pog cards (perhaps to make your stats look less suspicious), you can set `self.ONLY_GRAB_POG_CARDS` to `True` in `config.py`.
+    - If you have CardCompanion set up, you can use the following settings in `config.py`:
+      1. If you want to ONLY grab pog cards (perhaps to make your accounts' stats look less suspicious), set `self.ONLY_GRAB_POG_CARDS` to `True`.
+          - **NOTE:** While this setting is on, the script will prioritize using the dropper to grab the pog cards.
+      2. If you want an account to automatically grab a pog card if it appears in a server drop channel, set up the **Server Drop Grabber** (`self.GRAB_SERVER_POG_CARDS`) in **Usage Tips/Features** above.
+      3. If there are pog cards in the drop, you can make the dropper attempt to grab all the pog cards in the drop (boosting card stats) by setting `self.ATTEMPT_EXTRA_POG_GRABS = True`, **using extra grabs in the process**.
+          - If you want the dropper to automatically buy extra grabs after using them, set `self.ATTEMPT_BUY_EXTRA_GRABS = True`. Note that the accounts must have tickets on them in order for this to work; I recommend using the **Auto-Runner Tool** (see below) to automatically vote and get tickets.
+          - **NOTE:** If there are multiple pog cards, after the dropper attempts to grab all the pog cards, the other accounts in the channel will attempt to grab the rest of the pog cards after the first one, if any. This way, pog cards will always be grabbed, even if the dropper did not have enough extra grabs.
+      4. If you want all non-pog cards to be automatically burned after being grabbed, set `self.BURN_NON_POG_CARDS = True`. Note that this setting will do nothing if `self.ONLY_GRAB_POG_CARDS = True`.
 
 - The `/b` command can also be used on any bot buttons, not just Karuta. The list of allowed bots is set in `self.INTERACTION_BOT_IDS` in `command_checker.py`, which includes OwO by default.
 
