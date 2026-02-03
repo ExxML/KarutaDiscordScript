@@ -157,15 +157,15 @@ class DropScript():
             isinstance(self.TIME_LIMIT_HOURS_MIN, (int, float)) and self.TIME_LIMIT_HOURS_MIN >= 0,
             isinstance(self.TIME_LIMIT_HOURS_MAX, (int, float)) and self.TIME_LIMIT_HOURS_MAX >= 0,
             isinstance(self.TERMINAL_VISIBILITY, int) and self.TERMINAL_VISIBILITY in (0, 1),
-            isinstance(self.CHANNEL_SKIP_RATE, int) and (self.CHANNEL_SKIP_RATE == -1 or self.CHANNEL_SKIP_RATE > 0),
-            isinstance(self.DROP_SKIP_RATE, int) and (self.DROP_SKIP_RATE == -1 or self.DROP_SKIP_RATE > 0),
-            isinstance(self.RANDOM_COMMAND_RATE, int) and (self.RANDOM_COMMAND_RATE == -1 or self.RANDOM_COMMAND_RATE > 0),
+            isinstance(self.CHANNEL_SKIP_RATE, float) and (self.CHANNEL_SKIP_RATE >= 0.0 and self.CHANNEL_SKIP_RATE <= 1.0),
+            isinstance(self.DROP_SKIP_RATE, float) and (self.DROP_SKIP_RATE >= 0.0 and self.DROP_SKIP_RATE <= 1.0),
+            isinstance(self.RANDOM_COMMAND_RATE, float) and (self.RANDOM_COMMAND_RATE >= 0.0 and self.RANDOM_COMMAND_RATE <= 1.0),
             isinstance(self.RATE_LIMIT, int) and self.RATE_LIMIT >= 0,
             isinstance(self.DROP_FAIL_LIMIT, int) and (self.DROP_FAIL_LIMIT == -1 or self.DROP_FAIL_LIMIT >= 1),
 
             # CardCompanion Settings
             isinstance(self.ONLY_GRAB_POG_CARDS, bool),
-            isinstance(self.SKIP_GRAB_NON_POG_CARD_RATE, int) and (self.SKIP_GRAB_NON_POG_CARD_RATE == -1 or self.SKIP_GRAB_NON_POG_CARD_RATE > 0),
+            isinstance(self.SKIP_GRAB_NON_POG_CARD_RATE, float) and (self.SKIP_GRAB_NON_POG_CARD_RATE >= 0.0 and self.SKIP_GRAB_NON_POG_CARD_RATE <= 1.0),
             isinstance(self.GRAB_SERVER_POG_CARDS, bool),
             isinstance(self.ATTEMPT_EXTRA_POG_GRABS, bool),
             isinstance(self.ATTEMPT_BUY_EXTRA_GRABS, bool),
@@ -728,10 +728,10 @@ class DropScript():
                         print(f"ℹ️ Channel #{channel_num} has reached the time limit of {(time_limit_seconds / 60 / 60):.1f} hours. Stopping drops in channel...")
                         await self.send_message(token, self.tokens.index(token) + 1, channel_id, random.choice(self.TIME_LIMIT_EXCEEDED_MESSAGES), 0)
                         return
-                    if self.DROP_SKIP_RATE < 0 or random.randint(1, self.DROP_SKIP_RATE) != 1:  # If SKIP_RATE == -1 (or any neg num), never skip
-                        await self.drop_and_grab(token, self.tokens.index(token) + 1, channel_id, channel_tokens.copy())
+                    if random.random() < self.DROP_SKIP_RATE:
+                        print(f"ℹ️ [Account #{self.tokens.index(token) + 1}] Skipped drop.")
                     else:
-                        print(f"✅ [Account #{self.tokens.index(token) + 1}] Skipped drop.")
+                        await self.drop_and_grab(token, self.tokens.index(token) + 1, channel_id, channel_tokens.copy())
                     await self.pause_event.wait()  # Check if need to pause
                     if self.DROP_FAIL_LIMIT >= 1 and self.drop_fail_count >= self.DROP_FAIL_LIMIT:  # If FAIL_LIMIT == -1 (or any neg num), never pause
                         if self.COMMAND_CHANNEL_IDS:
@@ -746,7 +746,7 @@ class DropScript():
                     for _ in range(num_delay_steps):
                         await self.pause_event.wait()  # Check if need to pause
                         await asyncio.sleep(random_delay_per_step)
-                        if random.randint(1, self.RANDOM_COMMAND_RATE) == 1:
+                        if random.random() < self.RANDOM_COMMAND_RATE:
                             await self.send_message(token, self.tokens.index(token) + 1, channel_id, random.choice(self.RANDOM_COMMANDS), 0)
         except Exception as e:
             print(f"\n❌ Error in Channel #{channel_num} Script Instance ❌\n{e}")
@@ -799,7 +799,7 @@ class DropScript():
         start_delay_multipliers = random.sample(range(num_channels), num_channels)
         for index, channel_id in enumerate(self.DROP_CHANNEL_IDS):
             channel_num = index + 1
-            if self.CHANNEL_SKIP_RATE > 0 and random.randint(1, self.CHANNEL_SKIP_RATE) == 1:  # If SKIP_RATE == -1 (or any neg num), never skip
+            if random.random() < self.CHANNEL_SKIP_RATE:
                 print(f"\nℹ️ Channel #{channel_num} will be skipped.")
             else:
                 channel_tokens = self.channel_token_dict[channel_id]

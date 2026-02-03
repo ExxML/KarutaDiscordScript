@@ -106,7 +106,7 @@ pip install -r requirements.txt
     - If you have CardCompanion set up, you can use the following settings in `config.py`:
       1. If you want to ONLY grab pog cards (perhaps to make your accounts' stats look less suspicious), set `self.ONLY_GRAB_POG_CARDS` to `True`.
           - **NOTE:** While this setting is on, the script will prioritize using the dropper to grab the pog cards.
-      2. If `self.ONLY_GRAB_POG_CARDS = False` but you want to occasionally skip grabbing a non-pog card, set a value for `self.SKIP_GRAB_NON_POG_CARD_RATE`. For every non-pog card dropped, there is a 1/`self.SKIP_GRAB_NON_POG_CARD_RATE` chance that the card will not be grabbed. Set to -1 if you wish to disable this feature and grab all non-pog cards. 
+      2. If `self.ONLY_GRAB_POG_CARDS = False` but you want to occasionally skip grabbing a non-pog card, set a value for `self.SKIP_GRAB_NON_POG_CARD_RATE`. For every non-pog card dropped, there is a `self.SKIP_GRAB_NON_POG_CARD_RATE` % chance that the card will not be grabbed. Set to 0.0 if you wish to disable this feature and grab all non-pog cards. 
           - In general, you should keep this enabled (set to some value) so that not all cards in a drop are grabbed, otherwise it'll look suspicious.
       3. If you want an account to automatically grab a pog card if it appears in a server drop channel, set up the **Server Drop Grabber** (`self.GRAB_SERVER_POG_CARDS`) in **Usage Tips/Features** above.
       4. If there are pog cards in the drop, you can make the dropper attempt to grab all the pog cards in the drop (boosting card stats) by setting `self.ATTEMPT_EXTRA_POG_GRABS = True`, **using extra grabs in the process**.
