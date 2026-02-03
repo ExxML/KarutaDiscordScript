@@ -114,6 +114,9 @@ pip install -r requirements.txt
             - All accounts should have tickets on them in order to successfully buy the extra grabs; I recommend using the **Auto-Runner Tool** (see below) to automatically vote and get tickets.
           - **NOTE:** If there are multiple pog cards, after the dropper attempts to grab all the pog cards, the other accounts in the channel will attempt to grab the rest of the pog cards after the first one, if any. This way, pog cards will always be grabbed, even if the dropper did not have enough extra grabs.
       5. If you want all non-pog cards to be automatically burned after being grabbed, set `self.BURN_NON_POG_CARDS = True`. Note that this setting will do nothing if `self.ONLY_GRAB_POG_CARDS = True`.
+      6. If you want one or two of the other accounts in the channel (randomly chosen) to fight for a pog card alongside the dropper, set `self.FIGHT_POG_CARD = True`. This behavior applies ONLY when exactly one pog card is dropped. If more than one pog card is dropped, this setting is ignored.
+          - **NOTE:** When fighting for a pog card, the other two (non-pog) cards in the drop will not be grabbed.
+          - **NOTE:** If `self.ONLY_GRAB_POG_CARDS = False` and `self.FIGHT_POG_CARD = True`, the fighting will take precedence over grabbing non-pog cards.
 
 - The `/b` command can also be used on any bot buttons, not just Karuta. The list of allowed bots is set in `self.INTERACTION_BOT_IDS` in `command_checker.py`, which includes OwO by default.
 

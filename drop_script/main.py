@@ -169,12 +169,13 @@ class DropScript():
             isinstance(self.GRAB_SERVER_POG_CARDS, bool),
             isinstance(self.ATTEMPT_EXTRA_POG_GRABS, bool),
             isinstance(self.ATTEMPT_BUY_EXTRA_GRABS, bool),
-            isinstance(self.BURN_NON_POG_CARDS, bool)
+            isinstance(self.BURN_NON_POG_CARDS, bool),
+            isinstance(self.FIGHT_POG_CARD, bool)
         ]):
             input("⛔ Configuration Error ⛔\nPlease enter valid values in config.py.")
             sys.exit()
         if self.TIME_LIMIT_HOURS_MIN > self.TIME_LIMIT_HOURS_MAX:
-            input("⛔ Configuration Error ⛔\nPlease enter a maximum time limit greater than the minimum time limit in config.py.")
+            input("⛔ Configuration Error ⛔\nPlease enter a maximum time limit greater than or equal to the minimum time limit in config.py.")
             sys.exit()
 
     def get_headers(self, token: str, channel_id: str):
