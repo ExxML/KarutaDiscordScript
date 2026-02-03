@@ -161,7 +161,7 @@ class DropScript():
             isinstance(self.DROP_SKIP_RATE, int) and (self.DROP_SKIP_RATE == -1 or self.DROP_SKIP_RATE > 0),
             isinstance(self.RANDOM_COMMAND_RATE, int) and (self.RANDOM_COMMAND_RATE == -1 or self.RANDOM_COMMAND_RATE > 0),
             isinstance(self.RATE_LIMIT, int) and self.RATE_LIMIT >= 0,
-            isinstance(self.DROP_FAIL_LIMIT, int) and (self.DROP_FAIL_LIMIT == -1 or self.DROP_FAIL_LIMIT > 0),
+            isinstance(self.DROP_FAIL_LIMIT, int) and (self.DROP_FAIL_LIMIT == -1 or self.DROP_FAIL_LIMIT >= 1),
 
             # CardCompanion Settings
             isinstance(self.ONLY_GRAB_POG_CARDS, bool),
@@ -269,17 +269,17 @@ class DropScript():
                             print(f"ℹ️ [Account #{account}] Retrieve drop message failed: Drop is on cooldown.")
                             return None
                     elif status == 401:
-                        print(f"❌ [Account #{account}] Retrieve drop message failed ({self.drop_fail_count + 1}/{self.DROP_FAIL_LIMIT}): Invalid token.")
+                        print(f"❌ [Account #{account}] Retrieve drop message failed" + (f" ({self.drop_fail_count + 1}/{self.DROP_FAIL_LIMIT})" if self.DROP_FAIL_LIMIT >= 1 else "") + ": Invalid token.")
                         async with self.drop_fail_count_lock:
                             self.drop_fail_count += 1
                         return None
                     elif status == 403:
-                        print(f"❌ [Account #{account}] Retrieve drop message failed ({self.drop_fail_count + 1}/{self.DROP_FAIL_LIMIT}): Token banned or insufficient permissions.")
+                        print(f"❌ [Account #{account}] Retrieve drop message failed" + (f" ({self.drop_fail_count + 1}/{self.DROP_FAIL_LIMIT})" if self.DROP_FAIL_LIMIT >= 1 else "") + ": Token banned or insufficient permissions.")
                         async with self.drop_fail_count_lock:
                             self.drop_fail_count += 1
                         return None
                 await asyncio.sleep(random.uniform(0.5, 1))
-            print(f"❌ [Account #{account}] Retrieve drop message failed ({self.drop_fail_count + 1}/{self.DROP_FAIL_LIMIT}): Timed out ({timeout}s).")
+            print(f"❌ [Account #{account}] Retrieve drop message failed" + (f" ({self.drop_fail_count + 1}/{self.DROP_FAIL_LIMIT})" if self.DROP_FAIL_LIMIT >= 1 else "") + f": Timed out ({timeout}s).")
             async with self.drop_fail_count_lock:
                 self.drop_fail_count += 1
             return None
@@ -698,7 +698,7 @@ class DropScript():
                 self.pause_event.clear()  # Pause drops, but not commands
             command = await asyncio.to_thread(input, prompt)
             if command == target_command:  # Resume if target command is inputted
-                if flag == self.DROP_FAIL_LIMIT_REACHED_FLAG and self.DROP_FAIL_LIMIT >= 0 and self.drop_fail_count >= self.DROP_FAIL_LIMIT:
+                if flag == self.DROP_FAIL_LIMIT_REACHED_FLAG and self.DROP_FAIL_LIMIT >= 1 and self.drop_fail_count >= self.DROP_FAIL_LIMIT:
                     async with self.drop_fail_count_lock:
                         self.drop_fail_count = 0
                     print("ℹ️ Reset drop fail count. Resuming drops...")
@@ -733,7 +733,7 @@ class DropScript():
                     else:
                         print(f"✅ [Account #{self.tokens.index(token) + 1}] Skipped drop.")
                     await self.pause_event.wait()  # Check if need to pause
-                    if self.DROP_FAIL_LIMIT >= 0 and self.drop_fail_count >= self.DROP_FAIL_LIMIT:  # If FAIL_LIMIT == -1 (or any neg num), never pause
+                    if self.DROP_FAIL_LIMIT >= 1 and self.drop_fail_count >= self.DROP_FAIL_LIMIT:  # If FAIL_LIMIT == -1 (or any neg num), never pause
                         if self.COMMAND_CHANNEL_IDS:
                             await self.send_message(token, self.tokens.index(token) + 1, self.COMMAND_CHANNEL_IDS[0], "⚠️ Drop fail limit reached", 0)
                         if self.TERMINAL_VISIBILITY:
