@@ -602,13 +602,17 @@ class DropScript():
                             emoji = other_emojis[i]
                             grab_token = other_channel_tokens[i]
                             grab_account = self.tokens.index(grab_token) + 1
-                            if self.BURN_NON_POG_CARDS:
-                                try:
-                                    card_number = self.EMOJIS.index(emoji) + 1
-                                    if card_number not in pog_cards:
-                                        tokens_to_burn.append(grab_token)
-                                except ValueError:
-                                    print(f"❌ [Account #{grab_account}] Unable to identify card number given emoji: {emoji}; skipping burn.")
+                            try:
+                                card_number = self.EMOJIS.index(emoji) + 1
+                            except ValueError:
+                                print(f"❌ [Account #{grab_account}] Unable to identify card number given emoji: {emoji}; skipping burn.")
+
+                            if random.random() < self.SKIP_GRAB_NON_POG_CARD_RATE and card_number not in pog_cards:
+                                card_string = self.EMOJI_MAP.get(emoji)
+                                print(f"ℹ️ [Account #{grab_account}] Skipped grab for card {card_string}.")
+                                continue  # Skip grab
+                            if self.BURN_NON_POG_CARDS and card_number not in pog_cards:
+                                tokens_to_burn.append(grab_token)
                             await self.add_reaction(grab_token, grab_account, channel_id, drop_message_id, emoji, 0)
                             await asyncio.sleep(random.uniform(0.5, 3.5))
                         if self.BURN_NON_POG_CARDS and tokens_to_burn:
@@ -628,13 +632,17 @@ class DropScript():
                             emoji = shuffled_emojis[i]
                             grab_token = shuffled_channel_tokens[i]
                             grab_account = self.tokens.index(grab_token) + 1
-                            if self.BURN_NON_POG_CARDS:
-                                try:
-                                    card_number = self.EMOJIS.index(emoji) + 1
-                                    if card_number not in pog_cards:
-                                        tokens_to_burn.append(grab_token)
-                                except ValueError:
-                                    print(f"❌ [Account #{grab_account}] Unable to identify card number given emoji: {emoji}; skipping burn.")
+                            try:
+                                card_number = self.EMOJIS.index(emoji) + 1
+                            except ValueError:
+                                print(f"❌ [Account #{grab_account}] Unable to identify card number given emoji: {emoji}; skipping burn.")
+
+                            if random.random() < self.SKIP_GRAB_NON_POG_CARD_RATE and card_number not in pog_cards:
+                                card_string = self.EMOJI_MAP.get(emoji)
+                                print(f"ℹ️ [Account #{grab_account}] Skipped grab for card {card_string}.")
+                                continue  # Skip grab
+                            if self.BURN_NON_POG_CARDS and card_number not in pog_cards:
+                                tokens_to_burn.append(grab_token)
                             await self.add_reaction(grab_token, grab_account, channel_id, drop_message_id, emoji, 0)
                             await asyncio.sleep(random.uniform(0.5, 3.5))
                         if self.BURN_NON_POG_CARDS and tokens_to_burn:
