@@ -150,25 +150,26 @@ class DropScript():
             input("⛔ Configuration Error ⛔\nPlease enter strings (not integers) for the command user IDs (or leave empty), command channel IDs (or leave empty), and (server activity) drop channel IDs in config.py.")
             sys.exit()
         if not all([
-            isinstance(self.TERMINAL_VISIBILITY, int),
+            # Script Settings
             isinstance(self.KARUTA_PREFIX, str),
-            isinstance(self.SHUFFLE_ACCOUNTS, bool),
-            isinstance(self.RATE_LIMIT, int),
-            isinstance(self.DROP_FAIL_LIMIT, int),
-            isinstance(self.TIME_LIMIT_HOURS_MIN, (int, float)),
-            isinstance(self.TIME_LIMIT_HOURS_MAX, (int, float)),
-            isinstance(self.CHANNEL_SKIP_RATE, int),
-            isinstance(self.DROP_SKIP_RATE, int),
-            isinstance(self.ONLY_GRAB_POG_CARDS, bool),
-            isinstance(self.RANDOM_COMMAND_RATE, int),
             isinstance(self.SPECIAL_EVENT, bool),
-            self.TERMINAL_VISIBILITY in (0, 1),
-            self.RATE_LIMIT >= 0,
-            self.TIME_LIMIT_HOURS_MIN >= 0,
-            self.TIME_LIMIT_HOURS_MAX >= 0,
-            self.CHANNEL_SKIP_RATE != 0,
-            self.DROP_SKIP_RATE != 0,
-            self.RANDOM_COMMAND_RATE > 0
+            isinstance(self.SHUFFLE_ACCOUNTS, bool),
+            isinstance(self.TIME_LIMIT_HOURS_MIN, (int, float)) and self.TIME_LIMIT_HOURS_MIN >= 0,
+            isinstance(self.TIME_LIMIT_HOURS_MAX, (int, float)) and self.TIME_LIMIT_HOURS_MAX >= 0,
+            isinstance(self.TERMINAL_VISIBILITY, int) and self.TERMINAL_VISIBILITY in (0, 1),
+            isinstance(self.CHANNEL_SKIP_RATE, int) and (self.CHANNEL_SKIP_RATE == -1 or self.CHANNEL_SKIP_RATE > 0),
+            isinstance(self.DROP_SKIP_RATE, int) and (self.DROP_SKIP_RATE == -1 or self.DROP_SKIP_RATE > 0),
+            isinstance(self.RANDOM_COMMAND_RATE, int) and (self.RANDOM_COMMAND_RATE == -1 or self.RANDOM_COMMAND_RATE > 0),
+            isinstance(self.RATE_LIMIT, int) and self.RATE_LIMIT >= 0,
+            isinstance(self.DROP_FAIL_LIMIT, int) and (self.DROP_FAIL_LIMIT == -1 or self.DROP_FAIL_LIMIT > 0),
+
+            # CardCompanion Settings
+            isinstance(self.ONLY_GRAB_POG_CARDS, bool),
+            isinstance(self.SKIP_GRAB_NON_POG_CARD_RATE, int) and (self.SKIP_GRAB_NON_POG_CARD_RATE == -1 or self.SKIP_GRAB_NON_POG_CARD_RATE > 0),
+            isinstance(self.GRAB_SERVER_POG_CARDS, bool),
+            isinstance(self.ATTEMPT_EXTRA_POG_GRABS, bool),
+            isinstance(self.ATTEMPT_BUY_EXTRA_GRABS, bool),
+            isinstance(self.BURN_NON_POG_CARDS, bool)
         ]):
             input("⛔ Configuration Error ⛔\nPlease enter valid values in config.py.")
             sys.exit()

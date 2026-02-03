@@ -35,6 +35,7 @@ class Config():
         ##### CardCompanion Settings #####
         ### Do not enable any of these settings unless you have set up CardCompanion in all of your regular and server activity drop channels. ###
         self.ONLY_GRAB_POG_CARDS = False  # (bool) Determines whether to ONLY grab pog cards (as defined by CardCompanion). IF CARDCOMPANION IS NOT SET UP, SET THIS TO FALSE, or else no cards will be grabbed.
+        self.SKIP_GRAB_NON_POG_CARD_RATE = -1  # (int) ONLY USED if self.ONLY_GRAB_POG_CARDS = False. For every non-pog card dropped, there is a 1/self.SKIP_GRAB_NON_POG_CARD_RATE chance that the card will not be grabbed. Set to -1 if you wish to grab all non-pog cards.
         self.GRAB_SERVER_POG_CARDS = False  # (bool) Repeatedly scan self.SERVER_ACTIVITY_DROP_CHANNEL_IDS and automatically grab pog cards using the token in server_drop_token.json.
         self.ATTEMPT_EXTRA_POG_GRABS = False  # (bool) If True, the dropper will react to all other pog cards in the drop, if any. If CardCompanion is not set up, this setting will do nothing. Note that this will require extra grabs.
         self.ATTEMPT_BUY_EXTRA_GRABS = False  # (bool) ONLY USED if self.ATTEMPT_EXTRA_POG_GRABS = True. After using an extra grab on a pog drop, the account will attempt to buy another extra grab.
