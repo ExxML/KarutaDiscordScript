@@ -170,7 +170,7 @@ class DropScript():
             isinstance(self.ATTEMPT_EXTRA_POG_GRABS, bool),
             isinstance(self.ATTEMPT_BUY_EXTRA_GRABS, bool),
             isinstance(self.BURN_NON_POG_CARDS, bool),
-            isinstance(self.FIGHT_POG_CARD, bool)
+            isinstance(self.FIGHT_FOR_POG_CARD, bool)
         ]):
             input("⛔ Configuration Error ⛔\nPlease enter valid values in config.py.")
             sys.exit()
@@ -558,66 +558,74 @@ class DropScript():
                 # Note that there is no need to wait for the CardCompanion message because get_drop_message() only returns after all Karuta emojis have been added, by which time CardCompanion should have already identified the drop
                 pog_cards = await self.get_card_companion_pog_cards(token, account, channel_id, drop_message_id) # Get all pog card numbers as a list (containing 1, 2, and/or 3, or empty)
                 if pog_cards:
-                    if self.ATTEMPT_EXTRA_POG_GRABS:
-                        # If self.ATTEMPT_EXTRA_POG_GRABS = True, the dropper should attempt to grab all the pog card(s)
-                        for pog_card in pog_cards:
-                            pog_card_index = pog_card - 1
-                            pog_card_emoji = self.EMOJIS[pog_card_index]
-                            await self.add_reaction(token, account, channel_id, drop_message_id, pog_card_emoji, 0)
-                            await asyncio.sleep(random.uniform(0.5, 2))
-                    else:
-                        # If self.ATTEMPT_EXTRA_POG_GRABS = False, the dropper should only grab the first pog card
-                        first_pog_card_index = pog_cards[0] - 1
-                        first_pog_card_emoji = self.EMOJIS[first_pog_card_index]
-                        await self.add_reaction(token, account, channel_id, drop_message_id, first_pog_card_emoji, 0)
-                        await asyncio.sleep(random.uniform(0.5, 3.5))
+                    if self.FIGHT_FOR_POG_CARD and len(pog_cards) == 1:
+                        # If fighting for a pog card,
+                        # self.ATTEMPT_EXTRA_POG_GRABS is not a factor because fights only happen with one pog card
+                        # self.ONLY_GRAB_POG_CARDS is also not a factor because fighting has a higher priority than grabbing non-pog cards
+                        pass
 
-                    if self.ONLY_GRAB_POG_CARDS:
-                        # If self.ONLY_GRAB_POG_CARDS = True, the non-droppers will grab the pog cards excluding the first one (if any)
-                        # This way, pog cards will always be grabbed, even if the dropper did not have enough extra grabs
-                        other_pog_cards = pog_cards.copy()
-                        other_pog_cards.pop(0)
-                        random.shuffle(other_pog_cards)
-                        other_channel_tokens = channel_tokens.copy()
-                        other_channel_tokens.remove(token)
-                        random.shuffle(other_channel_tokens)
-                        for i, pog_card in enumerate(other_pog_cards):
-                            emoji = self.EMOJIS[pog_card - 1]
-                            grab_token = other_channel_tokens[i]
-                            grab_account = self.tokens.index(grab_token) + 1
-                            await self.add_reaction(grab_token, grab_account, channel_id, drop_message_id, emoji, 0)
-                            await asyncio.sleep(random.uniform(0.5, 3.5))
                     else:
-                        # If self.ONLY_GRAB_POG_CARDS = False, the non-droppers will grab the other (2) cards in the drop, 
-                        first_pog_card_index = pog_cards[0] - 1
-                        first_pog_card_emoji = self.EMOJIS[first_pog_card_index]
-                        other_emojis = self.EMOJIS.copy()
-                        other_emojis.remove(first_pog_card_emoji)
-                        random.shuffle(other_emojis)
-                        other_channel_tokens = channel_tokens.copy()
-                        other_channel_tokens.remove(token)
-                        random.shuffle(other_channel_tokens)
-                        tokens_to_burn = []
-                        num_other_channel_tokens = len(other_channel_tokens)
-                        for i in range(num_other_channel_tokens):
-                            emoji = other_emojis[i]
-                            grab_token = other_channel_tokens[i]
-                            grab_account = self.tokens.index(grab_token) + 1
-                            try:
-                                card_number = self.EMOJIS.index(emoji) + 1
-                            except ValueError:
-                                print(f"❌ [Account #{grab_account}] Unable to identify card number given emoji: {emoji}; skipping burn.")
-
-                            if random.random() < self.SKIP_GRAB_NON_POG_CARD_RATE and card_number not in pog_cards:
-                                card_string = self.EMOJI_MAP.get(emoji)
-                                print(f"ℹ️ [Account #{grab_account}] Skipped grab for card {card_string}.")
-                                continue  # Skip grab
-                            if self.BURN_NON_POG_CARDS and card_number not in pog_cards:
-                                tokens_to_burn.append(grab_token)
-                            await self.add_reaction(grab_token, grab_account, channel_id, drop_message_id, emoji, 0)
+                        # If not fighting for a pog card
+                        if self.ATTEMPT_EXTRA_POG_GRABS:
+                            # If self.ATTEMPT_EXTRA_POG_GRABS = True, the dropper should attempt to grab all the pog card(s)
+                            for pog_card in pog_cards:
+                                pog_card_index = pog_card - 1
+                                pog_card_emoji = self.EMOJIS[pog_card_index]
+                                await self.add_reaction(token, account, channel_id, drop_message_id, pog_card_emoji, 0)
+                                await asyncio.sleep(random.uniform(0.5, 2))
+                        else:
+                            # If self.ATTEMPT_EXTRA_POG_GRABS = False, the dropper should only grab the first pog card
+                            first_pog_card_index = pog_cards[0] - 1
+                            first_pog_card_emoji = self.EMOJIS[first_pog_card_index]
+                            await self.add_reaction(token, account, channel_id, drop_message_id, first_pog_card_emoji, 0)
                             await asyncio.sleep(random.uniform(0.5, 3.5))
-                        if self.BURN_NON_POG_CARDS and tokens_to_burn:
-                            asyncio.create_task(self.burn_non_pog_cards(tokens_to_burn, channel_id))
+
+                        if self.ONLY_GRAB_POG_CARDS:
+                            # If self.ONLY_GRAB_POG_CARDS = True, the non-droppers will grab the pog cards excluding the first one (if any)
+                            # This way, pog cards will always be grabbed, even if the dropper did not have enough extra grabs
+                            other_pog_cards = pog_cards.copy()
+                            other_pog_cards.pop(0)
+                            random.shuffle(other_pog_cards)
+                            other_channel_tokens = channel_tokens.copy()
+                            other_channel_tokens.remove(token)
+                            random.shuffle(other_channel_tokens)
+                            for i, pog_card in enumerate(other_pog_cards):
+                                emoji = self.EMOJIS[pog_card - 1]
+                                grab_token = other_channel_tokens[i]
+                                grab_account = self.tokens.index(grab_token) + 1
+                                await self.add_reaction(grab_token, grab_account, channel_id, drop_message_id, emoji, 0)
+                                await asyncio.sleep(random.uniform(0.5, 3.5))
+                        else:
+                            # If self.ONLY_GRAB_POG_CARDS = False, the non-droppers will grab the other (2) cards in the drop, 
+                            first_pog_card_index = pog_cards[0] - 1
+                            first_pog_card_emoji = self.EMOJIS[first_pog_card_index]
+                            other_emojis = self.EMOJIS.copy()
+                            other_emojis.remove(first_pog_card_emoji)
+                            random.shuffle(other_emojis)
+                            other_channel_tokens = channel_tokens.copy()
+                            other_channel_tokens.remove(token)
+                            random.shuffle(other_channel_tokens)
+                            tokens_to_burn = []
+                            num_other_channel_tokens = len(other_channel_tokens)
+                            for i in range(num_other_channel_tokens):
+                                emoji = other_emojis[i]
+                                grab_token = other_channel_tokens[i]
+                                grab_account = self.tokens.index(grab_token) + 1
+                                try:
+                                    card_number = self.EMOJIS.index(emoji) + 1
+                                except ValueError:
+                                    print(f"❌ [Account #{grab_account}] Unable to identify card number given emoji: {emoji}; skipping burn.")
+
+                                if random.random() < self.SKIP_GRAB_NON_POG_CARD_RATE and card_number not in pog_cards:
+                                    card_string = self.EMOJI_MAP.get(emoji)
+                                    print(f"ℹ️ [Account #{grab_account}] Skipped grab for card {card_string}.")
+                                    continue  # Skip grab
+                                if self.BURN_NON_POG_CARDS and card_number not in pog_cards:
+                                    tokens_to_burn.append(grab_token)
+                                await self.add_reaction(grab_token, grab_account, channel_id, drop_message_id, emoji, 0)
+                                await asyncio.sleep(random.uniform(0.5, 3.5))
+                            if self.BURN_NON_POG_CARDS and tokens_to_burn:
+                                asyncio.create_task(self.burn_non_pog_cards(tokens_to_burn, channel_id))
 
                 else:
                     # If there are no pog cards and grabbing all cards, 
