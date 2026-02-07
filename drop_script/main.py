@@ -562,7 +562,28 @@ class DropScript():
                         # If fighting for a pog card,
                         # self.ATTEMPT_EXTRA_POG_GRABS is not a factor because fights only happen with one pog card
                         # self.ONLY_GRAB_POG_CARDS is also not a factor because fighting has a higher priority than grabbing non-pog cards
-                        pass
+                        num_fighters = random.choice((1, 2))  # 50% chance for 1 or 2 other accounts in the channel to fight
+                        pog_card_index = pog_cards[0] - 1
+                        pog_card_emoji = self.EMOJIS[pog_card_index]
+                        other_channel_tokens = channel_tokens.copy()
+                        other_channel_tokens.remove(token)
+                        random.shuffle(other_channel_tokens)
+                        await self.add_reaction(token, account, channel_id, drop_message_id, pog_card_emoji, 0)
+                        if num_fighters == 1:
+                            grab_token = other_channel_tokens[0]
+                            grab_account = self.tokens.index(grab_token) + 1
+                            await asyncio.sleep(random.uniform(0.3, 0.9))  # Assume 0 second grace period (total 1 second to grab)
+                            await self.add_reaction(grab_token, grab_account, channel_id, drop_message_id, pog_card_emoji, 0)
+                            await asyncio.sleep(random.uniform(0.5, 3.5))
+                        elif num_fighters == 2:
+                            sleep_delay = random.uniform(0.2, 0.9)
+                            for i, grab_token in enumerate(other_channel_tokens):  # Should iterate twice
+                                grab_account = self.tokens.index(grab_token) + 1
+                                await self.add_reaction(grab_token, grab_account, channel_id, drop_message_id, pog_card_emoji, 0)
+                                if i == 0:
+                                    await asyncio.sleep(sleep_delay)
+                                elif i == 1:
+                                    await asyncio.sleep(0.9 - sleep_delay)
 
                     else:
                         # If not fighting for a pog card
@@ -596,7 +617,7 @@ class DropScript():
                                 await self.add_reaction(grab_token, grab_account, channel_id, drop_message_id, emoji, 0)
                                 await asyncio.sleep(random.uniform(0.5, 3.5))
                         else:
-                            # If self.ONLY_GRAB_POG_CARDS = False, the non-droppers will grab the other (2) cards in the drop, 
+                            # If self.ONLY_GRAB_POG_CARDS = False, the non-droppers will grab the other (2) cards in the drop
                             first_pog_card_index = pog_cards[0] - 1
                             first_pog_card_emoji = self.EMOJIS[first_pog_card_index]
                             other_emojis = self.EMOJIS.copy()
