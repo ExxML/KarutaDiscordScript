@@ -207,7 +207,7 @@ async def test_limit_disabled_never_pauses(bot, discord, dropper):
     assert bot.pause_event.is_set()
 
 
-async def test_limit_with_visible_terminal_prompts_and_resumes(bot, discord, dropper, inputs, capsys):
+async def test_limit_prompts_and_resumes(bot, discord, dropper, inputs, capsys):
     inputs.expect("oops", "")  # A wrong answer re-prompts
     bot.drop_fail_count = 4
     failing_dropper(bot, dropper)
@@ -222,7 +222,7 @@ async def test_limit_with_visible_terminal_prompts_and_resumes(bot, discord, dro
     assert "Reset drop fail count. Resuming drops..." in capsys.readouterr().out
 
 
-async def test_limit_with_visible_terminal_and_no_command_channel(bot, discord, dropper, inputs):
+async def test_limit_without_command_channel_prompts(bot, discord, dropper, inputs):
     inputs.expect("")
     bot.COMMAND_CHANNEL_IDS = []
     bot.drop_fail_count = 5
@@ -232,34 +232,12 @@ async def test_limit_with_visible_terminal_and_no_command_channel(bot, discord, 
     assert bot.drop_fail_count == 0
 
 
-async def test_limit_with_hidden_terminal_pauses_until_remote_resume(bot, discord, dropper):
-    bot.TERMINAL_VISIBILITY = 0
-    bot.drop_fail_count = 5
-    task = asyncio.create_task(run(bot, time_limit = per_drop_delay(3) * 2 - 1))
-    await settle()
-    assert discord.sent() == [("tok1", "300", "⚠️ Drop fail limit reached")]
-    assert not bot.pause_event.is_set()
-    assert dropper.await_count == 1
-    # What `cmd /resume` does in command_checker.py
-    await bot.reset_drop_fail_count()
-    bot.pause_event.set()
-    await task
-    assert dropper.await_count == 2
-    assert bot.drop_fail_count == 0
-
-
-async def test_limit_with_hidden_terminal_and_no_command_channel_exits(bot, dropper, capsys):
-    bot.TERMINAL_VISIBILITY = 0
-    bot.COMMAND_CHANNEL_IDS = []
-    bot.drop_fail_count = 5
-    with pytest.raises(SystemExit):
-        await run(bot, time_limit = 10 ** 9)
-    assert "Drop Fail Limit Reached ⛔" in capsys.readouterr().out
-
-
-async def test_limit_reached_once_pauses_every_channel(bot, discord, dropper):
+async def test_limit_reached_once_pauses_every_channel(bot, discord, dropper, monkeypatch):
     """Only the channel that hits the limit should report it; the others must wait."""
-    bot.TERMINAL_VISIBILITY = 0
+    async def wait_for_enter(*args):
+        await asyncio.Event().wait()  # Nobody presses Enter
+
+    monkeypatch.setattr(bot, "async_input_handler", wait_for_enter)
     failing_dropper(bot, dropper, failures = 5)
     tasks = [asyncio.create_task(bot.run_instance(n, ch, delay, list(CHANNEL_TOKENS), 10 ** 9)) for n, ch, delay in ((1, "100", 0), (2, "101", 10))]
     await settle(200)
@@ -394,7 +372,6 @@ async def test_input_handler_drop_fail_flag_resets_count(bot, inputs):
 
 async def test_input_handler_execution_completed_relaunches(bot, inputs, system):
     inputs.expect("")
-    bot.TERMINAL_VISIBILITY = 1
     with pytest.raises(SystemExit):
         await bot.async_input_handler("", "", bot.EXECUTION_COMPLETED_FLAG)
     system.shell_execute.assert_called_once_with(

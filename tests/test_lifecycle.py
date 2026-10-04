@@ -178,22 +178,10 @@ async def test_run_script_without_command_channels_is_silent(script, discord):
     assert discord.sent() == []
 
 
-async def test_run_script_prompts_restart_with_visible_terminal(script, discord):
+async def test_run_script_prompts_restart(script, discord):
     await script.run_script()
     script.async_input_handler.assert_awaited_once()
     assert script.async_input_handler.await_args.args[1:] == ("", script.EXECUTION_COMPLETED_FLAG)
-
-
-async def test_run_script_ends_with_hidden_terminal(script, discord, system):
-    script.TERMINAL_VISIBILITY = 0
-    await script.run_script()
-    script.async_input_handler.assert_not_called()
-    system.win32gui.ShowWindow.assert_called_once_with(system.win32console.GetConsoleWindow.return_value, main.win32con.SW_HIDE)
-
-
-async def test_run_script_keeps_visible_terminal(script, discord, system):
-    await script.run_script()
-    system.win32gui.ShowWindow.assert_not_called()
 
 
 async def test_run_script_shuffles_accounts(script, discord, rng):
@@ -409,14 +397,6 @@ def test_main_relaunches_in_new_console(entry):
     entry.shell.assert_called_once_with(None, None, sys.executable, subprocess.list2cmdline([str(MAIN_PATH), "--no-relaunch"]), None, 1)  # runpy sets argv[0] to the script path
     entry.extractor.assert_not_called()
     assert entry.ran == []
-
-
-def test_main_relaunch_is_visible_even_when_hidden_mode(entry, monkeypatch):
-    """Startup prompts must be visible; run_script() hides the window afterwards."""
-    entry.overrides["TERMINAL_VISIBILITY"] = 0
-    with pytest.raises(SystemExit):
-        entry.run(["main.py"])
-    assert entry.shell.call_args.args[-1] == 1
 
 
 def test_main_runs_script_after_relaunch(entry):

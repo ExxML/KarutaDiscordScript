@@ -75,7 +75,6 @@ async def test_failed_drop_command_counts_as_drop_failure(bot, discord, system, 
     assert discord.reactions() == []
     assert not discord.calls("GET")  # Nothing else attempted
     system.shell_execute.assert_not_called()
-    system.win32gui.ShowWindow.assert_not_called()
     assert "❌ [Account #2] Drop failed (1/5): Drop command could not be sent." in capsys.readouterr().out
 
 

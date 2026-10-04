@@ -401,10 +401,8 @@ def system(monkeypatch):
     """Replace every Windows/process side effect main.py can trigger."""
     shell = SimpleNamespace(ShellExecuteW = MagicMock(return_value = 42))
     monkeypatch.setattr(main, "ctypes", SimpleNamespace(windll = SimpleNamespace(shell32 = shell)))
-    monkeypatch.setattr(main, "win32console", MagicMock())
-    monkeypatch.setattr(main, "win32gui", MagicMock())
     monkeypatch.setattr(main.sys, "argv", ["main.py"])
-    return SimpleNamespace(shell_execute = shell.ShellExecuteW, win32gui = main.win32gui, win32console = main.win32console)
+    return SimpleNamespace(shell_execute = shell.ShellExecuteW)
 
 
 @pytest.fixture
@@ -416,7 +414,6 @@ def bot(discord, clock, rng):
     b.SERVER_ACTIVITY_DROP_CHANNEL_IDS = list(SERVER_CHANNELS)
     b.SPECIAL_EVENT = False
     b.SHUFFLE_ACCOUNTS = False
-    b.TERMINAL_VISIBILITY = 1
     b.CHANNEL_SKIP_RATE = 0.0
     b.DROP_SKIP_RATE = 0.0
     b.RANDOM_COMMAND_RATE = 0.0

@@ -25,7 +25,6 @@ class Config():
         self.SHUFFLE_ACCOUNTS = True  # (bool) Improve randomness by shuffling accounts across channels every time the script runs.
         self.TIME_LIMIT_HOURS_MIN = 6  # (int/float) MINIMUM time limit in hours before script automatically pauses (to avoid ban risk).
         self.TIME_LIMIT_HOURS_MAX = 10  # (int/float) MAXIMUM time limit in hours before script automatically pauses (to avoid ban risk).
-        self.TERMINAL_VISIBILITY = 1  # 0 = hidden, 1 = visible (recommended)
         self.CHANNEL_SKIP_RATE = 0.125  # (float) Every time the script runs, there is a self.CHANNEL_SKIP_RATE % chance of skipping a channel. Set to 0.0 if you wish to disable skipping.
         self.DROP_SKIP_RATE = 0.083  # (float) For every drop, there is a self.DROP_SKIP_RATE % chance of skipping the drop. Set to 0.0 if you wish to disable skipping.
         self.RANDOM_COMMAND_RATE = 0.002  # (float) Every 2-3 seconds, there is a self.RANDOM_COMMAND_RATE % chance of sending a random command. Set to 0.0 if you wish to disable random commands.

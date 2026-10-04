@@ -4,10 +4,8 @@ from token_extractor import TokenExtractor
 from config import Config
 from datetime import datetime, timedelta
 from collections import defaultdict
-import win32console
 import win32api
 import win32con
-import win32gui
 import contextlib
 import subprocess
 import random
@@ -158,7 +156,6 @@ class DropScript():
             isinstance(self.SHUFFLE_ACCOUNTS, bool),
             isinstance(self.TIME_LIMIT_HOURS_MIN, (int, float)) and 0 <= self.TIME_LIMIT_HOURS_MIN < math.inf,
             isinstance(self.TIME_LIMIT_HOURS_MAX, (int, float)) and 0 <= self.TIME_LIMIT_HOURS_MAX < math.inf,
-            isinstance(self.TERMINAL_VISIBILITY, int) and self.TERMINAL_VISIBILITY in (0, 1),
             isinstance(self.CHANNEL_SKIP_RATE, float) and (self.CHANNEL_SKIP_RATE >= 0.0 and self.CHANNEL_SKIP_RATE <= 1.0),
             isinstance(self.DROP_SKIP_RATE, float) and (self.DROP_SKIP_RATE >= 0.0 and self.DROP_SKIP_RATE <= 1.0),
             isinstance(self.RANDOM_COMMAND_RATE, float) and (self.RANDOM_COMMAND_RATE >= 0.0 and self.RANDOM_COMMAND_RATE <= 1.0),
@@ -782,7 +779,7 @@ class DropScript():
                     await self.reset_drop_fail_count()
                 elif flag == self.EXECUTION_COMPLETED_FLAG:
                     ctypes.windll.shell32.ShellExecuteW(
-                        None, None, sys.executable, subprocess.list2cmdline(sys.argv + [self.RELAUNCH_FLAG]), None, self.TERMINAL_VISIBILITY
+                        None, None, sys.executable, subprocess.list2cmdline(sys.argv + [self.RELAUNCH_FLAG]), None, 1
                     )
                     sys.exit()
                 self.pause_event.set()
@@ -817,12 +814,8 @@ class DropScript():
                             self.pause_event.clear()  # Pause all channels before awaiting, so only this channel handles the limit
                             if self.COMMAND_CHANNEL_IDS:
                                 await self.send_message(token, self.tokens.index(token) + 1, self.COMMAND_CHANNEL_IDS[0], "⚠️ Drop fail limit reached", 0)
-                            if self.TERMINAL_VISIBILITY:
-                                await self.async_input_handler(f"\n⚠️ Drop Fail Limit Reached ⚠️\nThe script has failed to retrieve {self.DROP_FAIL_LIMIT} total drops. Automatically pausing drops...\nPress `Enter` if you wish to resume.\n",
-                                                                                "", self.DROP_FAIL_LIMIT_REACHED_FLAG)
-                            elif not self.COMMAND_CHANNEL_IDS:  # Drops could never be resumed
-                                print(f"\n⛔ Drop Fail Limit Reached ⛔\nThe script has failed to retrieve {self.DROP_FAIL_LIMIT} total drops. Stopping script...")
-                                sys.exit()
+                            await self.async_input_handler(f"\n⚠️ Drop Fail Limit Reached ⚠️\nThe script has failed to retrieve {self.DROP_FAIL_LIMIT} total drops. Automatically pausing drops...\nPress `Enter` if you wish to resume.\n",
+                                                                            "", self.DROP_FAIL_LIMIT_REACHED_FLAG)
                     except Exception as e:  # Keep the channel running after errors such as dropped connections
                         print(f"\n❌ Error in Channel #{channel_num} Drop ❌\n{e}")
                     # Breaking up delay into multiple steps to check if need to pause
@@ -913,8 +906,6 @@ class DropScript():
                     print(f"  - Account #{self.tokens.index(token) + 1}")
                 task_instances.append(asyncio.create_task(self.run_instance(channel_num, channel_id, start_delay_seconds, channel_tokens.copy(), channel_time_limit_seconds)))
         await asyncio.sleep(3)  # Short delay to show user the account/channel information
-        if not self.TERMINAL_VISIBILITY:
-            win32gui.ShowWindow(win32console.GetConsoleWindow(), win32con.SW_HIDE)  # Hidden only after startup, so any startup prompts are visible
         if self.COMMAND_CHANNEL_IDS:
             random_token = random.choice(self.tokens)
             print(f"\n{datetime.now().strftime('%I:%M:%S %p').lstrip('0')}")
@@ -924,9 +915,8 @@ class DropScript():
         if self.COMMAND_CHANNEL_IDS:
             random_token = random.choice(self.tokens)
             await self.send_message(random_token, self.tokens.index(random_token) + 1, self.COMMAND_CHANNEL_IDS[0], "Execution completed", 0)
-        if self.TERMINAL_VISIBILITY:
-            print(f"\n{datetime.now().strftime('%I:%M:%S %p').lstrip('0')}")
-            await self.async_input_handler(f"✅ Script Execution Completed ✅\nClose the terminal to exit, or press `Enter` to restart the script.\n", "", self.EXECUTION_COMPLETED_FLAG)
+        print(f"\n{datetime.now().strftime('%I:%M:%S %p').lstrip('0')}")
+        await self.async_input_handler(f"✅ Script Execution Completed ✅\nClose the terminal to exit, or press `Enter` to restart the script.\n", "", self.EXECUTION_COMPLETED_FLAG)
 
     async def cleanup(self):
         random_token = random.choice(self.tokens)
@@ -968,7 +958,7 @@ if __name__ == "__main__":
     bot = DropScript()
     if bot.RELAUNCH_FLAG not in sys.argv:
         ctypes.windll.shell32.ShellExecuteW(
-            None, None, sys.executable, subprocess.list2cmdline(sys.argv + [bot.RELAUNCH_FLAG]), None, 1  # Always visible at startup; run_script() hides it if TERMINAL_VISIBILITY = 0
+            None, None, sys.executable, subprocess.list2cmdline(sys.argv + [bot.RELAUNCH_FLAG]), None, 1
         )
         sys.exit()
     bot.check_config()
