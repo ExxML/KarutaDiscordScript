@@ -9,7 +9,7 @@ class Config():
         self.COMMAND_CHANNEL_IDS = [
             "",
         ]
-        # Enter your drop channels as a list of strings. You MUST have at least 1 drop channel for every 3 accounts used.
+        # Enter your drop channels as a list of strings. You MUST have exactly 1 drop channel for every 3 accounts used (rounded up).
         self.DROP_CHANNEL_IDS = [
             "",
         ]

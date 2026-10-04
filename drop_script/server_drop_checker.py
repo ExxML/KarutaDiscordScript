@@ -106,6 +106,13 @@ class ServerDropChecker():
         emoji_names = [reaction.get('emoji', {}).get('name') for reaction in message.get('reactions', [])]
         return [emoji for emoji in emoji_names if emoji not in self.main.CARD_EMOJIS]
 
+    async def karuta_reacted(self, token: str, channel_id: str, msg_id: str, emoji: str):
+        url = f"https://discord.com/api/v10/channels/{channel_id}/messages/{msg_id}/reactions/{emoji}?limit=100"
+        headers = self.main.get_headers(token, channel_id)
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers = headers) as resp:
+                return resp.status == 200 and any(user.get('id') == self.main.KARUTA_BOT_ID for user in await resp.json())
+
     async def add_special_event_reactions(self, channel_id: str, message: dict):
         try:
             msg_id = message.get('id')
@@ -116,6 +123,8 @@ class ServerDropChecker():
                     token = self.special_event_tokens_dict.get("any", "")
                     if not token:  # If there is no token found for "any", return
                         return
+                if not await self.karuta_reacted(token, channel_id, msg_id, special_event_emoji):
+                    continue  # Reaction was added by a player, not by Karuta
                 await self.main.add_reaction(token, 0, channel_id, msg_id, special_event_emoji, 0)  # 0 as account stub
         except KeyError:
             print(f"❌ [Special Event Account] Retrieve message failed: KeyError.")

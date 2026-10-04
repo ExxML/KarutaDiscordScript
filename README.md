@@ -25,12 +25,12 @@ Discord's Terms of Service explicitly prohibits self-bots (as of August 2025, an
 pip install -r requirements.txt
 ```
 4. Ensure the Karuta drop mode (`kdropmode`) is set to reactions, NOT buttons, in ALL the drop channels.
-5. All accounts must ONLY drop 3 cards, not 4. If an accounts drops 4 cards, the fourth card will not be auto-grabbed. (Server drops and other users' drops with more than 3 cards are still supported by the Special Event Grabber and Server Drop Grabber.)
+5. All accounts must ONLY drop 3 cards, not 4. If an account drops 4 cards, the drop will not be recognized, so none of its cards will be auto-grabbed and it will count toward `self.DROP_FAIL_LIMIT`. (Server drops and other users' drops with more than 3 cards are still supported by the Special Event Grabber and Server Drop Grabber.)
 6. Create/buy accounts for the script to use! I **highly recommend** purchasing FULLY VERIFIED alt accounts from a trusted shop. A fully verified account means that it has a verified email AND phone number- a phone number connected to the account is imperative because Discord frequently phone-locks suspicious accounts. (You don't need to have access to the phone, it just needs to be connected to your account.)
     - If you decide to buy accounts, I recommend purchasing from https://shop.xyliase.com/product/discord-accounts-%7C-fully-verified-tokens (I am not affiliated with this shop). As of July 2025, there is plenty of cheap stock and customer service is excellent.
 7. Edit the `__init__` constants in `config.py`.
     - `self.DROP_CHANNEL_IDS` is a list of channels where the script will drop cards. 
-      - **You MUST have at least 1 drop channel for every 3 accounts used.**
+      - **You MUST have exactly 1 drop channel for every 3 accounts used (rounded up).**
     - `self.SERVER_ACTIVITY_DROP_CHANNEL_IDS` is used for two purposes:
       1. During a Karuta special event, the special event account(s) will track these channels and automatically react to the special event emoji, if found.
       2. If CardCompanion is in use, the server drop account will also track these channels and automatically grab pog cards, if the setting is enabled.
