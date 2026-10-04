@@ -28,6 +28,7 @@ class DropScript():
         ### DO NOT MODIFY THESE CONSTANTS ###
         self.KARUTA_BOT_ID = "646937666251915264"
         self.KARUTA_DROP_MESSAGE = "is dropping 3 cards!"
+        self.KARUTA_ANY_DROP_MESSAGE_REGEX = re.compile(r"is dropping \d+ cards!")  # Other users' drops may contain more than 3 cards
         self.KARUTA_SERVER_ACTIVITY_DROP_MESSAGE = "since this server is currently active!"
         self.KARUTA_EXPIRED_DROP_MESSAGE = "This drop has expired and the cards can no longer be grabbed."
         self.KARUTA_DROP_COOLDOWN_MESSAGE = ", you must wait"
@@ -39,15 +40,12 @@ class DropScript():
         self.KARUTA_MULTIBURN_TITLE = "Burn Cards"
         self.KARUTA_ITEM_PURCHASE_TITLE = "Item Purchase"
 
-        self.CARD_COMPANION_BOT_ID = "1380936713639166082"
-        self.CARD_COMPANION_POG_EMOJIS = [":no_1:", ":no_2:", ":no_3:"]
+        self.CARD_EMOJIS = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣']  # Server drops and other users' drops may contain more than 3 cards
+        self.EMOJIS = self.CARD_EMOJIS[:3]  # Script drops always contain 3 cards
+        self.EMOJI_MAP = {emoji: f"[{num}]" for num, emoji in enumerate(self.CARD_EMOJIS, start = 1)}  # Use card number instead of emoji in terminal output for better readability
 
-        self.EMOJIS = ['1️⃣', '2️⃣', '3️⃣']
-        self.EMOJI_MAP = {
-            '1️⃣': '[1]',
-            '2️⃣': '[2]',
-            '3️⃣': '[3]'
-        } # Use card number instead of emoji in terminal output for better readability
+        self.CARD_COMPANION_BOT_ID = "1380936713639166082"
+        self.CARD_COMPANION_POG_EMOJIS = [f":no_{num}:" for num in range(1, len(self.CARD_EMOJIS) + 1)]
 
         self.RANDOM_ADDON = ['', ' ', ' !', ' :D', ' w']
         self.DROP_COMMANDS = [f"{self.KARUTA_PREFIX}drop", f"{self.KARUTA_PREFIX}d"]
@@ -331,7 +329,7 @@ class DropScript():
                                 continue
                             content = msg.get('content', '')
                             author_id = msg.get('author', {}).get('id')
-                            if author_id == self.KARUTA_BOT_ID and (self.KARUTA_DROP_MESSAGE in content or self.KARUTA_SERVER_ACTIVITY_DROP_MESSAGE in content):
+                            if author_id == self.KARUTA_BOT_ID and (self.KARUTA_ANY_DROP_MESSAGE_REGEX.search(content) or self.KARUTA_SERVER_ACTIVITY_DROP_MESSAGE in content):
                                 break  # Any later CardCompanion messages belong to the next drop
                             if all([
                                 author_id == self.CARD_COMPANION_BOT_ID,
@@ -372,7 +370,7 @@ class DropScript():
                 elif channel_id in self.COMMAND_CHANNEL_IDS:
                     channel_name = f"Command Channel #{self.COMMAND_CHANNEL_IDS.index(channel_id) + 1}"
                 # Print result
-                if emoji in self.EMOJIS:  # when grabbing drop script cards
+                if emoji in self.CARD_EMOJIS:  # when grabbing cards
                     card_number = self.EMOJI_MAP.get(emoji)
                     # Get account string
                     if account == 0:  # Server token account

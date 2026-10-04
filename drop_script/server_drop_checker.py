@@ -102,12 +102,14 @@ class ServerDropChecker():
             input(f'\n⛔ Server Token Format Error ⛔\nExpected a string in server_token.json. Example: "{example_server_token}"')
             sys.exit()
 
+    def get_special_event_emojis(self, message: dict):
+        emoji_names = [reaction.get('emoji', {}).get('name') for reaction in message.get('reactions', [])]
+        return [emoji for emoji in emoji_names if emoji not in self.main.CARD_EMOJIS]
+
     async def add_special_event_reactions(self, channel_id: str, message: dict):
         try:
             msg_id = message.get('id')
-            num_special_event_emojis = len(message.get('reactions')) - len(self.main.EMOJIS)  # num_special_event_emojis will be >= 1
-            for i in range(1, num_special_event_emojis + 1):
-                special_event_emoji = message.get('reactions')[-i].get('emoji').get('name')  # Get the ith last emoji (the event emoji)
+            for special_event_emoji in reversed(self.get_special_event_emojis(message)):  # Last emoji first
                 if special_event_emoji in self.special_event_tokens_dict:
                     token = self.special_event_tokens_dict.get(special_event_emoji)
                 else:
@@ -130,7 +132,7 @@ class ServerDropChecker():
 
     async def grab_pog_cards(self, token: str, channel_id: str, pog_cards: list[str], drop_message_id: str):
         first_pog_card_index = pog_cards[0] - 1
-        first_pog_card_emoji = self.main.EMOJIS[first_pog_card_index]
+        first_pog_card_emoji = self.main.CARD_EMOJIS[first_pog_card_index]
         await self.main.add_reaction(token, 0, channel_id, drop_message_id, first_pog_card_emoji, 0)
         await asyncio.sleep(random.uniform(0.5, 3.5))
         # Use random accounts to grab the other pog cards, if any
@@ -138,7 +140,7 @@ class ServerDropChecker():
         other_pog_cards.pop(0)
         random.shuffle(other_pog_cards)
         for pog_card in other_pog_cards:
-            emoji = self.main.EMOJIS[pog_card - 1]
+            emoji = self.main.CARD_EMOJIS[pog_card - 1]
             grab_token = random.choice(self.main.tokens)
             grab_account = self.main.tokens.index(grab_token) + 1
             await self.main.add_reaction(grab_token, grab_account, channel_id, drop_message_id, emoji, 0)
@@ -171,10 +173,10 @@ class ServerDropChecker():
                                     # Special Event Grabber
                                     num_reactions = len(msg.get('reactions', []))
                                     if self.main.SPECIAL_EVENT and all([
-                                        num_reactions > 3,  # 3 cards + special event emoji(s)
+                                        self.get_special_event_emojis(msg),
                                         msg.get('author', {}).get('id') == self.main.KARUTA_BOT_ID,
                                         (msg_id not in special_event_msg_history or special_event_msg_history.get(msg_id) != num_reactions),
-                                        (self.main.KARUTA_DROP_MESSAGE in msg.get('content', '') or self.main.KARUTA_SERVER_ACTIVITY_DROP_MESSAGE in msg.get('content', '')),
+                                        (self.main.KARUTA_ANY_DROP_MESSAGE_REGEX.search(msg.get('content', '')) or self.main.KARUTA_SERVER_ACTIVITY_DROP_MESSAGE in msg.get('content', '')),
                                         self.main.KARUTA_EXPIRED_DROP_MESSAGE not in msg.get('content', '')
                                     ]):
                                         await self.add_special_event_reactions(channel_id, msg)
@@ -182,7 +184,7 @@ class ServerDropChecker():
                                     
                                     # Server Drop Grabber
                                     if self.main.GRAB_SERVER_POG_CARDS and all([
-                                        num_reactions >= 3,  # 3 cards
+                                        num_reactions >= 3,  # At least 3 cards
                                         msg.get('author', {}).get('id') == self.main.KARUTA_BOT_ID,
                                         (msg_id not in server_pog_drop_msg_history),
                                         self.main.KARUTA_SERVER_ACTIVITY_DROP_MESSAGE in msg.get('content', ''),
