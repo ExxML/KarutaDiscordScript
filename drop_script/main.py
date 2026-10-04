@@ -151,7 +151,7 @@ class DropScript():
                 input("⛔ Configuration Error ⛔\nPlease enter non-empty, numeric strings for the command user IDs (or leave empty), command channel IDs (or leave empty), and (server activity) drop channel IDs in config.py.")
                 sys.exit()
         except (AttributeError, TypeError):
-            input("⛔ Configuration Error ⛔\nPlease enter lists of strings (not integers) for the command user IDs (or leave empty), command channel IDs (or leave empty), and (server activity) drop channel IDs in config.py.")
+            input("⛔ Configuration Error ⛔\nPlease enter strings (not integers) for the command user IDs (or leave empty), command channel IDs (or leave empty), and (server activity) drop channel IDs in config.py.")
             sys.exit()
         if not all([
             # Script Settings
@@ -241,7 +241,7 @@ class DropScript():
                     user_id = (await resp.json()).get('id')
         return user_id
 
-    async def get_drop_message(self, token: str, account: int, channel_id: str, secondary_special_event_check: bool):
+    async def get_drop_message(self, token: str, account: int, channel_id: str, drop_command_id: str, secondary_special_event_check: bool):
         limit = 20 if secondary_special_event_check else 5  # By the secondary check, grab messages may have been sent after the drop message
         url = f"https://discord.com/api/v10/channels/{channel_id}/messages?limit={limit}"
         headers = self.get_headers(token, channel_id)
@@ -257,7 +257,7 @@ class DropScript():
                         messages = await resp.json()
                         try:
                             for msg in messages:  # Newest to oldest
-                                if msg.get('author', {}).get('id') == user_id:
+                                if int(msg.get('id')) <= int(drop_command_id):
                                     break  # Older messages (e.g. stale cooldown messages) were sent before the drop command
                                 reactions = msg.get('reactions', [])
                                 if all([
@@ -306,6 +306,7 @@ class DropScript():
                 status = resp.status
                 if status == 200:
                     print(f"✅ [Account #{account}] Sent message '{content}'.")
+                    return await resp.json()  # The sent message
                 elif status == 401:
                     print(f"❌ [Account #{account}] Send message '{content}' failed: Invalid token.")
                 elif status == 403:
@@ -318,7 +319,7 @@ class DropScript():
                     return await self.send_message(token, account, channel_id, content, rate_limited)
                 else:
                     print(f"❌ [Account #{account}] Send message '{content}' failed: Error code {status}.")
-                return status == 200
+                return None
 
     async def get_card_companion_pog_cards(self, token: str, account: int, channel_id: str, drop_message_id: str):
         if account == 0:
@@ -587,9 +588,9 @@ class DropScript():
     async def drop_and_grab(self, token: str, account: int, channel_id: str, channel_tokens: list[str]):
         num_channel_tokens = len(channel_tokens)
         drop_message = random.choice(self.DROP_COMMANDS) + random.choice(self.RANDOM_ADDON)
-        sent = await self.send_message(token, account, channel_id, drop_message, 0)
-        if sent:
-            drop_message = await self.get_drop_message(token, account, channel_id, secondary_special_event_check = False)
+        drop_command = await self.send_message(token, account, channel_id, drop_message, 0)
+        if drop_command:
+            drop_message = await self.get_drop_message(token, account, channel_id, drop_command['id'], secondary_special_event_check = False)
             if drop_message:
                 drop_message_id = drop_message.get('id')
                 # Note that there is no need to wait for the CardCompanion message because get_drop_message() only returns after all Karuta emojis have been added, by which time CardCompanion should have already identified the drop
@@ -714,7 +715,7 @@ class DropScript():
                 if self.SPECIAL_EVENT:
                     if self.ONLY_GRAB_POG_CARDS:  # Extra delay is only necessary if no cards were grabbed (if self.ONLY_GRAB_POG_CARDS = True)
                         await asyncio.sleep(4)  # Extra delay to wait for special event emojis
-                    drop_message = await self.get_drop_message(token, account, channel_id, secondary_special_event_check = True)
+                    drop_message = await self.get_drop_message(token, account, channel_id, drop_command['id'], secondary_special_event_check = True)
                     if drop_message and len(drop_message.get('reactions', [])) > 3:  # 3 cards + special event emoji(s)
                         await self.server_drop_checker.add_special_event_reactions(channel_id, drop_message)
 
