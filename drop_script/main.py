@@ -28,6 +28,7 @@ class DropScript():
         ### DO NOT MODIFY THESE CONSTANTS ###
         self.KARUTA_BOT_ID = "646937666251915264"
         self.KARUTA_DROP_MESSAGE = "is dropping 3 cards!"
+        self.KARUTA_SERVER_ACTIVITY_DROP_MESSAGE = "since this server is currently active!"
         self.KARUTA_EXPIRED_DROP_MESSAGE = "This drop has expired and the cards can no longer be grabbed."
         self.KARUTA_DROP_COOLDOWN_MESSAGE = ", you must wait"
 
@@ -236,7 +237,8 @@ class DropScript():
         return user_id
 
     async def get_drop_message(self, token: str, account: int, channel_id: str, secondary_special_event_check: bool):
-        url = f"https://discord.com/api/v10/channels/{channel_id}/messages?limit=5"
+        limit = 20 if secondary_special_event_check else 5  # By the secondary check, grab messages may have been sent after the drop message
+        url = f"https://discord.com/api/v10/channels/{channel_id}/messages?limit={limit}"
         headers = self.get_headers(token, channel_id)
         user_id = await self.get_user_id(token, channel_id)
         on_cooldown = False
@@ -324,13 +326,17 @@ class DropScript():
                 if status == 200:
                     messages = await resp.json()
                     try:
-                        for msg in messages:
+                        for msg in reversed(messages):  # Oldest to newest
+                            if msg.get('id') <= drop_message_id:  # Ensure CardCompanion message was sent after the drop message
+                                continue
+                            content = msg.get('content', '')
+                            author_id = msg.get('author', {}).get('id')
+                            if author_id == self.KARUTA_BOT_ID and (self.KARUTA_DROP_MESSAGE in content or self.KARUTA_SERVER_ACTIVITY_DROP_MESSAGE in content):
+                                break  # Any later CardCompanion messages belong to the next drop
                             if all([
-                                msg.get('author', {}).get('id') == self.CARD_COMPANION_BOT_ID,
-                                msg.get('id') > drop_message_id,  # Ensure CardCompanion message was sent after the drop message
-                                any(emoji_str in msg.get('content', '') for emoji_str in self.CARD_COMPANION_POG_EMOJIS)  # Check if message contains an emoji indicating a pog card
+                                author_id == self.CARD_COMPANION_BOT_ID,
+                                any(emoji_str in content for emoji_str in self.CARD_COMPANION_POG_EMOJIS)  # Check if message contains an emoji indicating a pog card
                             ]):
-                                content = msg.get('content', '')
                                 card_numbers = []
                                 # Parse card numbers
                                 for match in re.findall(r"<:(no_\d+):\d+>", content):
@@ -509,7 +515,7 @@ class DropScript():
             account = self.tokens.index(token) + 1
             await asyncio.sleep(random.uniform(5, 90))  # Random delay between accounts burning. Note that this function is ran asynchronously, so long delays should be fine
             await self.pause_event.wait()  # Check if need to pause
-            self.send_message(token, account, channel_id, random.choice(self.BURN_COMMANDS), 0)
+            await self.send_message(token, account, channel_id, random.choice(self.BURN_COMMANDS), 0)
             await asyncio.sleep(random.uniform(5, 8))  # Wait for Karuta burn message
             await self.pause_event.wait()  # Check if need to pause
             burn_message = await self.get_karuta_message(token, account, channel_id, self.KARUTA_BURN_TITLE, 0)
@@ -529,7 +535,7 @@ class DropScript():
 
     async def attempt_buy_extra_grabs(self, token: str, account: int, channel_id: str, num_pog_cards: int):
         num_extra_grabs_purchased = num_pog_cards - 1
-        self.send_message(token, account, channel_id, self.BUY_EXTRA_GRAB_COMMAND + f" {num_extra_grabs_purchased}", 0)  # Note that num_pog_cards > 1, so -1 is safe
+        await self.send_message(token, account, channel_id, self.BUY_EXTRA_GRAB_COMMAND + f" {num_extra_grabs_purchased}", 0)  # Note that num_pog_cards > 1, so -1 is safe
         await asyncio.sleep(random.uniform(5, 8))  # Wait for Karuta item purchase message
         await self.pause_event.wait()  # Check if need to pause
         extra_grab_purchase_message = await self.get_karuta_message(token, account, channel_id, self.KARUTA_ITEM_PURCHASE_TITLE, 0)
@@ -568,22 +574,15 @@ class DropScript():
                         other_channel_tokens = channel_tokens.copy()
                         other_channel_tokens.remove(token)
                         random.shuffle(other_channel_tokens)
-                        await self.add_reaction(token, account, channel_id, drop_message_id, pog_card_emoji, 0)
-                        if num_fighters == 1:
-                            grab_token = other_channel_tokens[0]
+
+                        async def fight(grab_token: str):
                             grab_account = self.tokens.index(grab_token) + 1
-                            await asyncio.sleep(random.uniform(0.3, 0.9))  # Assume 0 second grace period (total 1 second to grab)
+                            await asyncio.sleep(random.uniform(0.2, 0.6))  # Assume 0 second grace period (total 1 second to grab, including request latency)
                             await self.add_reaction(grab_token, grab_account, channel_id, drop_message_id, pog_card_emoji, 0)
-                            await asyncio.sleep(random.uniform(0.5, 3.5))
-                        elif num_fighters == 2:
-                            sleep_delay = random.uniform(0.2, 0.9)
-                            for i, grab_token in enumerate(other_channel_tokens):  # Should iterate twice
-                                grab_account = self.tokens.index(grab_token) + 1
-                                await self.add_reaction(grab_token, grab_account, channel_id, drop_message_id, pog_card_emoji, 0)
-                                if i == 0:
-                                    await asyncio.sleep(sleep_delay)
-                                elif i == 1:
-                                    await asyncio.sleep(0.9 - sleep_delay)
+
+                        await self.add_reaction(token, account, channel_id, drop_message_id, pog_card_emoji, 0)
+                        await asyncio.gather(*(fight(grab_token) for grab_token in other_channel_tokens[:num_fighters]))  # Fighters grab concurrently so request latencies do not stack
+                        await asyncio.sleep(random.uniform(0.5, 3.5))
 
                     else:
                         # If not fighting for a pog card
@@ -610,9 +609,8 @@ class DropScript():
                             other_channel_tokens = channel_tokens.copy()
                             other_channel_tokens.remove(token)
                             random.shuffle(other_channel_tokens)
-                            for i, pog_card in enumerate(other_pog_cards):
+                            for pog_card, grab_token in zip(other_pog_cards, other_channel_tokens):
                                 emoji = self.EMOJIS[pog_card - 1]
-                                grab_token = other_channel_tokens[i]
                                 grab_account = self.tokens.index(grab_token) + 1
                                 await self.add_reaction(grab_token, grab_account, channel_id, drop_message_id, emoji, 0)
                                 await asyncio.sleep(random.uniform(0.5, 3.5))
@@ -620,12 +618,13 @@ class DropScript():
                             # If self.ONLY_GRAB_POG_CARDS = False, the non-droppers will grab the other (2) cards in the drop
                             first_pog_card_index = pog_cards[0] - 1
                             first_pog_card_emoji = self.EMOJIS[first_pog_card_index]
-                            other_emojis = self.EMOJIS.copy()
-                            other_emojis.remove(first_pog_card_emoji)
-                            random.shuffle(other_emojis)
                             other_channel_tokens = channel_tokens.copy()
                             other_channel_tokens.remove(token)
                             random.shuffle(other_channel_tokens)
+                            other_emojis = self.EMOJIS.copy()
+                            other_emojis.remove(first_pog_card_emoji)
+                            other_emojis = sorted(other_emojis, key = lambda emoji: self.EMOJIS.index(emoji) + 1 not in pog_cards)[:len(other_channel_tokens)]  # Prioritize pog cards if there are fewer accounts than cards
+                            random.shuffle(other_emojis)
                             tokens_to_burn = []
                             num_other_channel_tokens = len(other_channel_tokens)
                             for i in range(num_other_channel_tokens):
@@ -685,7 +684,7 @@ class DropScript():
                     if self.ONLY_GRAB_POG_CARDS:  # Extra delay is only necessary if no cards were grabbed (if self.ONLY_GRAB_POG_CARDS = True)
                         await asyncio.sleep(4)  # Extra delay to wait for special event emojis
                     drop_message = await self.get_drop_message(token, account, channel_id, secondary_special_event_check = True)
-                    if len(drop_message.get('reactions', [])) > 3:  # 3 cards + special event emoji(s)
+                    if drop_message and len(drop_message.get('reactions', [])) > 3:  # 3 cards + special event emoji(s)
                         await self.server_drop_checker.add_special_event_reactions(channel_id, drop_message)
 
                 # If only grabbing pog cards, then only the dropper will ever be active

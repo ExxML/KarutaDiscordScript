@@ -13,8 +13,6 @@ class ServerDropChecker():
         if self.main.GRAB_SERVER_POG_CARDS:
             self.init_server_token()
 
-        self.KARUTA_SERVER_ACTIVITY_DROP_MESSAGE = "I'm dropping 3 cards since this server is currently active!"
-
         asyncio.create_task(self.run_server_drop_checker())
 
     def init_special_event_tokens_dict(self):
@@ -141,14 +139,16 @@ class ServerDropChecker():
             await asyncio.sleep(random.uniform(0.5, 3.5))
 
     async def run_server_drop_checker(self):
+        server_drop_tokens = []
         if self.main.SPECIAL_EVENT:
             # special_event_msg_history contains the messages that have been previously reacted to (key = message ID, value = number of emojis reacted)
             # Note that if the number of distinct emojis has changed, the message will be considered unseen! This way, if there are multiple special event emojis, all of them will be guaranteed to be grabbed.
             special_event_msg_history: dict[str, int] = {}
+            server_drop_tokens += list(self.special_event_tokens_dict.values())
         if self.main.GRAB_SERVER_POG_CARDS:
-            # server_pog_drop_msg_history contains the message IDs that have been previously grabbed from
+            # server_pog_drop_msg_history contains the message IDs that have been previously checked for pog cards
             server_pog_drop_msg_history: set[str] = set()
-        server_drop_tokens = list(self.special_event_tokens_dict.values()) + [self.server_token]
+            server_drop_tokens.append(self.server_token)
         while True:
             try:
                 for channel_id in self.main.SERVER_ACTIVITY_DROP_CHANNEL_IDS:
@@ -168,7 +168,7 @@ class ServerDropChecker():
                                         num_reactions > 3,  # 3 cards + special event emoji(s)
                                         msg.get('author', {}).get('id') == self.main.KARUTA_BOT_ID,
                                         (msg_id not in special_event_msg_history or special_event_msg_history.get(msg_id) != num_reactions),
-                                        (self.main.KARUTA_DROP_MESSAGE in msg.get('content', '') or self.KARUTA_SERVER_ACTIVITY_DROP_MESSAGE in msg.get('content', '')),
+                                        (self.main.KARUTA_DROP_MESSAGE in msg.get('content', '') or self.main.KARUTA_SERVER_ACTIVITY_DROP_MESSAGE in msg.get('content', '')),
                                         self.main.KARUTA_EXPIRED_DROP_MESSAGE not in msg.get('content', '')
                                     ]):
                                         await self.add_special_event_reactions(channel_id, msg)
@@ -179,14 +179,14 @@ class ServerDropChecker():
                                         num_reactions >= 3,  # 3 cards
                                         msg.get('author', {}).get('id') == self.main.KARUTA_BOT_ID,
                                         (msg_id not in server_pog_drop_msg_history),
-                                        self.KARUTA_SERVER_ACTIVITY_DROP_MESSAGE in msg.get('content', ''),
+                                        self.main.KARUTA_SERVER_ACTIVITY_DROP_MESSAGE in msg.get('content', ''),
                                         self.main.KARUTA_EXPIRED_DROP_MESSAGE not in msg.get('content', '')
                                     ]):
                                         await asyncio.sleep(random.uniform(10, 20))  # Long delay before grabbing to avoid looking suspicious
                                         pog_cards = await self.main.get_card_companion_pog_cards(self.server_token, 0, channel_id, msg_id)
                                         if pog_cards:
                                             await self.grab_pog_cards(self.server_token, channel_id, pog_cards, msg_id)
-                                            server_pog_drop_msg_history.add(msg_id)
+                                        server_pog_drop_msg_history.add(msg_id)
                             else:
                                 print(f"❌ [Special Event Account] Retrieve message failed: Error code {status}.")
                                 return None
