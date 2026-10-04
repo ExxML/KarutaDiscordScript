@@ -122,6 +122,12 @@ class ServerDropChecker():
             print(f"❌ [Special Event Account] Retrieve message failed: IndexError.")
             pass
 
+    async def grab_server_drop(self, channel_id: str, drop_message_id: str):
+        await asyncio.sleep(random.uniform(10, 20))  # Long delay before grabbing to avoid looking suspicious
+        pog_cards = await self.main.get_card_companion_pog_cards(self.server_token, 0, channel_id, drop_message_id)
+        if pog_cards:
+            await self.grab_pog_cards(self.server_token, channel_id, pog_cards, drop_message_id)
+
     async def grab_pog_cards(self, token: str, channel_id: str, pog_cards: list[str], drop_message_id: str):
         first_pog_card_index = pog_cards[0] - 1
         first_pog_card_emoji = self.main.EMOJIS[first_pog_card_index]
@@ -182,11 +188,8 @@ class ServerDropChecker():
                                         self.main.KARUTA_SERVER_ACTIVITY_DROP_MESSAGE in msg.get('content', ''),
                                         self.main.KARUTA_EXPIRED_DROP_MESSAGE not in msg.get('content', '')
                                     ]):
-                                        await asyncio.sleep(random.uniform(10, 20))  # Long delay before grabbing to avoid looking suspicious
-                                        pog_cards = await self.main.get_card_companion_pog_cards(self.server_token, 0, channel_id, msg_id)
-                                        if pog_cards:
-                                            await self.grab_pog_cards(self.server_token, channel_id, pog_cards, msg_id)
                                         server_pog_drop_msg_history.add(msg_id)
+                                        asyncio.create_task(self.grab_server_drop(channel_id, msg_id))  # Run asynchronously so multiple drops can be grabbed concurrently
                             else:
                                 print(f"❌ [Special Event Account] Retrieve message failed: Error code {status}.")
                                 return None

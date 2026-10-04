@@ -510,12 +510,34 @@ class DropScript():
                     return payload
         return None
 
-    async def burn_non_pog_cards(self, tokens_to_burn: list[str], channel_id: str):
+    async def get_grabbed_card_code(self, token: str, account: int, channel_id: str, drop_message_id: str):
+        url = f"https://discord.com/api/v10/channels/{channel_id}/messages?limit=50"
+        headers = self.get_headers(token, channel_id)
+        user_id = await self.get_user_id(token, channel_id)
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers = headers) as resp:
+                status = resp.status
+                if status != 200:
+                    print(f"❌ [Account #{account}] Retrieve grab message failed: Error code {status}.")
+                    return None
+                for msg in await resp.json():
+                    if msg.get('author', {}).get('id') == self.KARUTA_BOT_ID and msg.get('id') > drop_message_id:
+                        # Ex. "<@user> took the **X** card `code`!" or "<@user> fought off 7 others and took the **X** card `code`!"
+                        match = re.match(rf"<@{user_id}> (?:fought off .+? and )?took the \*\*.+?\*\* card `(\w+)`", msg.get('content', ''))
+                        if match:
+                            return match.group(1)
+                return None
+
+    async def burn_non_pog_cards(self, tokens_to_burn: list[str], channel_id: str, drop_message_id: str):
         for token in tokens_to_burn:
             account = self.tokens.index(token) + 1
             await asyncio.sleep(random.uniform(5, 90))  # Random delay between accounts burning. Note that this function is ran asynchronously, so long delays should be fine
             await self.pause_event.wait()  # Check if need to pause
-            await self.send_message(token, account, channel_id, random.choice(self.BURN_COMMANDS), 0)
+            card_code = await self.get_grabbed_card_code(token, account, channel_id, drop_message_id)
+            if not card_code:  # Never burn without a code, or else the account's latest card (possibly a pog card) would be burned
+                print(f"ℹ️ [Account #{account}] Grab not confirmed; skipping burn.")
+                continue
+            await self.send_message(token, account, channel_id, f"{random.choice(self.BURN_COMMANDS)} {card_code}", 0)
             await asyncio.sleep(random.uniform(5, 8))  # Wait for Karuta burn message
             await self.pause_event.wait()  # Check if need to pause
             burn_message = await self.get_karuta_message(token, account, channel_id, self.KARUTA_BURN_TITLE, 0)
@@ -645,7 +667,7 @@ class DropScript():
                                 await self.add_reaction(grab_token, grab_account, channel_id, drop_message_id, emoji, 0)
                                 await asyncio.sleep(random.uniform(0.5, 3.5))
                             if self.BURN_NON_POG_CARDS and tokens_to_burn:
-                                asyncio.create_task(self.burn_non_pog_cards(tokens_to_burn, channel_id))
+                                asyncio.create_task(self.burn_non_pog_cards(tokens_to_burn, channel_id, drop_message_id))
 
                 else:
                     # If there are no pog cards and grabbing all cards, 
@@ -675,7 +697,7 @@ class DropScript():
                             await self.add_reaction(grab_token, grab_account, channel_id, drop_message_id, emoji, 0)
                             await asyncio.sleep(random.uniform(0.5, 3.5))
                         if self.BURN_NON_POG_CARDS and tokens_to_burn:
-                            asyncio.create_task(self.burn_non_pog_cards(tokens_to_burn, channel_id))
+                            asyncio.create_task(self.burn_non_pog_cards(tokens_to_burn, channel_id, drop_message_id))
 
                 await self.pause_event.wait()  # Check if need to pause
 
