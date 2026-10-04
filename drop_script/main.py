@@ -814,6 +814,9 @@ class DropScript():
                             if self.TERMINAL_VISIBILITY:
                                 await self.async_input_handler(f"\n⚠️ Drop Fail Limit Reached ⚠️\nThe script has failed to retrieve {self.DROP_FAIL_LIMIT} total drops. Automatically pausing drops...\nPress `Enter` if you wish to resume.\n",
                                                                                 "", self.DROP_FAIL_LIMIT_REACHED_FLAG)
+                            elif not self.COMMAND_CHANNEL_IDS:  # Drops could never be resumed
+                                print(f"\n⛔ Drop Fail Limit Reached ⛔\nThe script has failed to retrieve {self.DROP_FAIL_LIMIT} total drops. Stopping script...")
+                                sys.exit()
                     except Exception as e:  # Keep the channel running after errors such as dropped connections
                         print(f"\n❌ Error in Channel #{channel_num} Drop ❌\n{e}")
                     # Breaking up delay into multiple steps to check if need to pause

@@ -223,15 +223,14 @@ class AutoWorker():
                 return None
 
     def parse_min_tax_node(self, msg: dict):
-        description = msg['embeds'][0].get('description')
+        description = msg['embeds'][0].get('description', '')
 
         # \n2\. Gets the second node from the top (the node with the lowest tax)
         # [^a-zA-Z]* Skips non-letter characters (like spaces or backticks)
         # ([a-zA-Z]+) Captures the actual letters of the node
         match = re.search(r'\n2\.[^a-zA-Z]*([a-zA-Z]+)', description)
 
-        min_tax_node = match.group(1)
-        return min_tax_node
+        return match.group(1) if match else None
 
     def confirm_work_complete(self, account: int, work_msg: str):
         description = work_msg.get('embeds', [{}])[0].get('description', '')
@@ -253,6 +252,9 @@ class AutoWorker():
             nodes_overview_msg = await self.get_karuta_message(token, account_num, random_work_channel_id, self.KARUTA_NODES_OVERVIEW_TITLE, 0)
             if nodes_overview_msg:
                 min_tax_node = self.parse_min_tax_node(nodes_overview_msg)
+                if not min_tax_node:
+                    print(f"❌ [Account #{account_num}] Parse lowest tax node failed: Unexpected Nodes Overview message format.")
+                    return
                 sent = await self.send_message(token, account_num, random_work_channel_id, f"{self.KARUTA_PREFIX}jn {min_tax_node} abcde", 0)
                 if sent:
                     await asyncio.sleep(random.uniform(1, 5))  # Random delay
@@ -265,4 +267,5 @@ class AutoWorker():
                             await self.click_button(token, account_num, random_work_channel_id, '✅')
                             await asyncio.sleep(random.uniform(3, 5))  # Wait for Work message to update
                             work_msg = await self.get_karuta_message(token, account_num, random_work_channel_id, self.KARUTA_WORK_TITLE, 0)
-                            self.confirm_work_complete(account_num, work_msg)
+                            if work_msg:
+                                self.confirm_work_complete(account_num, work_msg)
