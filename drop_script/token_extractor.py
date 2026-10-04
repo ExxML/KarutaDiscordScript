@@ -4,6 +4,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium import webdriver
+import subprocess
 import random
 import ctypes
 import math
@@ -187,7 +188,7 @@ if __name__ == "__main__":
     RELAUNCH_FLAG = "--no-relaunch"
     if RELAUNCH_FLAG not in sys.argv:
         ctypes.windll.shell32.ShellExecuteW(
-            None, None, sys.executable, " ".join(sys.argv + [RELAUNCH_FLAG]), None, 1  # 0 = hidden, 1 = visible (recommended)
+            None, None, sys.executable, subprocess.list2cmdline(sys.argv + [RELAUNCH_FLAG]), None, 1  # 0 = hidden, 1 = visible (recommended)
         )
         sys.exit()
     token_extractor = TokenExtractor()

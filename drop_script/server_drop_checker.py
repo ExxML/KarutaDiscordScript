@@ -13,7 +13,7 @@ class ServerDropChecker():
         if self.main.GRAB_SERVER_POG_CARDS:
             self.init_server_token()
 
-        asyncio.create_task(self.run_server_drop_checker())
+        self.main.create_background_task(self.run_server_drop_checker())
 
     def init_special_event_tokens_dict(self):
         try:
@@ -191,7 +191,7 @@ class ServerDropChecker():
                                         self.main.KARUTA_EXPIRED_DROP_MESSAGE not in msg.get('content', '')
                                     ]):
                                         server_pog_drop_msg_history.add(msg_id)
-                                        asyncio.create_task(self.grab_server_drop(channel_id, msg_id))  # Run asynchronously so multiple drops can be grabbed concurrently
+                                        self.main.create_background_task(self.grab_server_drop(channel_id, msg_id))  # Run asynchronously so multiple drops can be grabbed concurrently
                             else:
                                 print(f"❌ [Special Event Account] Retrieve message failed: Error code {status}.")
                                 return None

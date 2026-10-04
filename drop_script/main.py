@@ -5,8 +5,11 @@ from config import Config
 from datetime import datetime, timedelta
 from collections import defaultdict
 import win32console
+import win32api
 import win32con
 import win32gui
+import contextlib
+import subprocess
 import random
 import asyncio
 import aiohttp
@@ -85,7 +88,7 @@ class DropScript():
             "dawg i was afk nooOO", "nah fr that's wild", "yo queue with me real quick", "yo why so many rares today", 
             "i swear u always pull good stuff", "damn stop stealing my luck lol", "wait that's mint condition right?", 
             "hold up is that sketch art?", "bruh where my luck at", "yo let's duel after this", "tryna 1v1 for it?", 
-            "how tf u keep dropping bangers", "wait i missed it BRUH", "i got scammed in trade lol"
+            "how tf u keep dropping bangers", "wait i missed it BRUH", "i got scammed in trade lol",
             "yo i blinked and missed it", "how u pull sm heat", "who boosting rn lol", "lemme borrow ur luck", 
             "stoppp that's too clean", "yo fr stop hoggin", "wait that's signed right?", "please trade it to me", 
             "you farming rn?", "yo gimme that theme", "bruh stop stealing drops", "i swear that was mine", 
@@ -134,6 +137,8 @@ class DropScript():
 
         self.pause_event = asyncio.Event()
         self.pause_event.set()
+        self.background_tasks = set()
+        self.loop = None
 
     def check_config(self):
         try:
@@ -145,8 +150,8 @@ class DropScript():
             ]):
                 input("⛔ Configuration Error ⛔\nPlease enter non-empty, numeric strings for the command user IDs (or leave empty), command channel IDs (or leave empty), and (server activity) drop channel IDs in config.py.")
                 sys.exit()
-        except AttributeError:
-            input("⛔ Configuration Error ⛔\nPlease enter strings (not integers) for the command user IDs (or leave empty), command channel IDs (or leave empty), and (server activity) drop channel IDs in config.py.")
+        except (AttributeError, TypeError):
+            input("⛔ Configuration Error ⛔\nPlease enter lists of strings (not integers) for the command user IDs (or leave empty), command channel IDs (or leave empty), and (server activity) drop channel IDs in config.py.")
             sys.exit()
         if not all([
             # Script Settings
@@ -216,14 +221,16 @@ class DropScript():
                 "Accept": "*/*",
                 "Accept-Language": "en-US,en;q=0.9",
                 "Origin": "https://discord.com",
-                "Referer": "https://discord.com/channels/@me",
-                "X-Context-Properties": base64.b64encode(json.dumps({
-                    "location": "Channel",
-                    "location_channel_id": channel_id,
-                    "location_channel_type": 1,
-                }).encode()).decode()
+                "Referer": "https://discord.com/channels/@me"
             }
-        return self.token_headers[token]
+        return {
+            **self.token_headers[token],
+            "X-Context-Properties": base64.b64encode(json.dumps({
+                "location": "Channel",
+                "location_channel_id": channel_id,
+                "location_channel_type": 1,
+            }).encode()).decode()
+        }
 
     async def get_user_id(self, token: str, channel_id: str):
         headers = self.get_headers(token, channel_id)
@@ -249,7 +256,9 @@ class DropScript():
                     if status == 200:
                         messages = await resp.json()
                         try:
-                            for msg in messages:
+                            for msg in messages:  # Newest to oldest
+                                if msg.get('author', {}).get('id') == user_id:
+                                    break  # Older messages (e.g. stale cooldown messages) were sent before the drop command
                                 reactions = msg.get('reactions', [])
                                 if all([
                                     msg.get('author', {}).get('id') == self.KARUTA_BOT_ID,
@@ -306,7 +315,7 @@ class DropScript():
                     retry_after = 1  # seconds
                     print(f"⚠️ [Account #{account}] Send message '{content}' failed ({rate_limited}/{self.RATE_LIMIT}): Rate limited, retrying after {retry_after}s.")
                     await asyncio.sleep(retry_after)
-                    await self.send_message(token, account, channel_id, content, rate_limited)
+                    return await self.send_message(token, account, channel_id, content, rate_limited)
                 else:
                     print(f"❌ [Account #{account}] Send message '{content}' failed: Error code {status}.")
                 return status == 200
@@ -325,7 +334,7 @@ class DropScript():
                     messages = await resp.json()
                     try:
                         for msg in reversed(messages):  # Oldest to newest
-                            if msg.get('id') <= drop_message_id:  # Ensure CardCompanion message was sent after the drop message
+                            if int(msg.get('id')) <= int(drop_message_id):  # Ensure CardCompanion message was sent after the drop message
                                 continue
                             content = msg.get('content', '')
                             author_id = msg.get('author', {}).get('id')
@@ -369,6 +378,8 @@ class DropScript():
                     channel_name = f"Server Activity Drop Channel #{self.SERVER_ACTIVITY_DROP_CHANNEL_IDS.index(channel_id) + 1}"
                 elif channel_id in self.COMMAND_CHANNEL_IDS:
                     channel_name = f"Command Channel #{self.COMMAND_CHANNEL_IDS.index(channel_id) + 1}"
+                else:
+                    channel_name = f"Channel {channel_id}"
                 # Print result
                 if emoji in self.CARD_EMOJIS:  # when grabbing cards
                     card_number = self.EMOJI_MAP.get(emoji)
@@ -433,7 +444,7 @@ class DropScript():
                     messages = await resp.json()
                     try:
                         for msg in messages:
-                            referenced_author_id = msg.get('referenced_message', {}).get('author', {}).get('id')  # Get the user ID of the user being replied to
+                            referenced_author_id = (msg.get('referenced_message') or {}).get('author', {}).get('id')  # Get the user ID of the user being replied to (null if that message was deleted)
                             if msg.get('author', {}).get('id') == self.KARUTA_BOT_ID and user_id == referenced_author_id:
                                 if search_content == self.KARUTA_CARD_TRANSFER_TITLE and msg.get('embeds') and self.KARUTA_CARD_TRANSFER_TITLE == msg['embeds'][0].get('title'):
                                     print(f"✅ [Account #{account}] Retrieved card transfer message.")
@@ -519,7 +530,7 @@ class DropScript():
                     print(f"❌ [Account #{account}] Retrieve grab message failed: Error code {status}.")
                     return None
                 for msg in await resp.json():
-                    if msg.get('author', {}).get('id') == self.KARUTA_BOT_ID and msg.get('id') > drop_message_id:
+                    if msg.get('author', {}).get('id') == self.KARUTA_BOT_ID and int(msg.get('id')) > int(drop_message_id):
                         # Ex. "<@user> took the **X** card `code`!" or "<@user> fought off 7 others and took the **X** card `code`!"
                         match = re.match(rf"<@{user_id}> (?:fought off .+? and )?took the \*\*.+?\*\* card `(\w+)`", msg.get('content', ''))
                         if match:
@@ -665,7 +676,7 @@ class DropScript():
                                 await self.add_reaction(grab_token, grab_account, channel_id, drop_message_id, emoji, 0)
                                 await asyncio.sleep(random.uniform(0.5, 3.5))
                             if self.BURN_NON_POG_CARDS and tokens_to_burn:
-                                asyncio.create_task(self.burn_non_pog_cards(tokens_to_burn, channel_id, drop_message_id))
+                                self.create_background_task(self.burn_non_pog_cards(tokens_to_burn, channel_id, drop_message_id))
 
                 else:
                     # If there are no pog cards and grabbing all cards, 
@@ -695,7 +706,7 @@ class DropScript():
                             await self.add_reaction(grab_token, grab_account, channel_id, drop_message_id, emoji, 0)
                             await asyncio.sleep(random.uniform(0.5, 3.5))
                         if self.BURN_NON_POG_CARDS and tokens_to_burn:
-                            asyncio.create_task(self.burn_non_pog_cards(tokens_to_burn, channel_id, drop_message_id))
+                            self.create_background_task(self.burn_non_pog_cards(tokens_to_burn, channel_id, drop_message_id))
 
                 await self.pause_event.wait()  # Check if need to pause
 
@@ -745,9 +756,15 @@ class DropScript():
                 input(f"⛔ Request Error ⛔\nMalformed request on Account #{account}. Possible reasons include:" +
                         f"\n 1. Invalid/expired token\n 2. Incorrectly inputted server/channel/bot ID\nPress `Enter` to restart the script.")
                 ctypes.windll.shell32.ShellExecuteW(
-                    None, None, sys.executable, " ".join(sys.argv + [RELAUNCH_FLAG]), None, self.TERMINAL_VISIBILITY
+                    None, None, sys.executable, subprocess.list2cmdline(sys.argv + [RELAUNCH_FLAG]), None, self.TERMINAL_VISIBILITY
                 )
             sys.exit()
+
+    async def reset_drop_fail_count(self):
+        if self.DROP_FAIL_LIMIT >= 1 and self.drop_fail_count >= self.DROP_FAIL_LIMIT:
+            async with self.drop_fail_count_lock:
+                self.drop_fail_count = 0
+            print("ℹ️ Reset drop fail count. Resuming drops...")
 
     async def async_input_handler(self, prompt: str, target_command: str, flag: str):
         while True:
@@ -755,13 +772,11 @@ class DropScript():
                 self.pause_event.clear()  # Pause drops, but not commands
             command = await asyncio.to_thread(input, prompt)
             if command == target_command:  # Resume if target command is inputted
-                if flag == self.DROP_FAIL_LIMIT_REACHED_FLAG and self.DROP_FAIL_LIMIT >= 1 and self.drop_fail_count >= self.DROP_FAIL_LIMIT:
-                    async with self.drop_fail_count_lock:
-                        self.drop_fail_count = 0
-                    print("ℹ️ Reset drop fail count. Resuming drops...")
+                if flag == self.DROP_FAIL_LIMIT_REACHED_FLAG:
+                    await self.reset_drop_fail_count()
                 elif flag == self.EXECUTION_COMPLETED_FLAG:
                     ctypes.windll.shell32.ShellExecuteW(
-                        None, None, sys.executable, " ".join(sys.argv + [RELAUNCH_FLAG]), None, self.TERMINAL_VISIBILITY
+                        None, None, sys.executable, subprocess.list2cmdline(sys.argv + [RELAUNCH_FLAG]), None, self.TERMINAL_VISIBILITY
                     )
                     sys.exit()
                 self.pause_event.set()
@@ -785,17 +800,21 @@ class DropScript():
                         print(f"ℹ️ Channel #{channel_num} has reached the time limit of {(time_limit_seconds / 60 / 60):.1f} hours. Stopping drops in channel...")
                         await self.send_message(token, self.tokens.index(token) + 1, channel_id, random.choice(self.TIME_LIMIT_EXCEEDED_MESSAGES), 0)
                         return
-                    if random.random() < self.DROP_SKIP_RATE:
-                        print(f"ℹ️ [Account #{self.tokens.index(token) + 1}] Skipped drop.")
-                    else:
-                        await self.drop_and_grab(token, self.tokens.index(token) + 1, channel_id, channel_tokens.copy())
-                    await self.pause_event.wait()  # Check if need to pause
-                    if self.DROP_FAIL_LIMIT >= 1 and self.drop_fail_count >= self.DROP_FAIL_LIMIT:  # If FAIL_LIMIT == -1 (or any neg num), never pause
-                        if self.COMMAND_CHANNEL_IDS:
-                            await self.send_message(token, self.tokens.index(token) + 1, self.COMMAND_CHANNEL_IDS[0], "⚠️ Drop fail limit reached", 0)
-                        if self.TERMINAL_VISIBILITY:
-                            await self.async_input_handler(f"\n⚠️ Drop Fail Limit Reached ⚠️\nThe script has failed to retrieve {self.DROP_FAIL_LIMIT} total drops. Automatically pausing drops...\nPress `Enter` if you wish to resume.\n",
-                                                                            "", self.DROP_FAIL_LIMIT_REACHED_FLAG)
+                    try:
+                        if random.random() < self.DROP_SKIP_RATE:
+                            print(f"ℹ️ [Account #{self.tokens.index(token) + 1}] Skipped drop.")
+                        else:
+                            await self.drop_and_grab(token, self.tokens.index(token) + 1, channel_id, channel_tokens.copy())
+                        await self.pause_event.wait()  # Check if need to pause
+                        if self.DROP_FAIL_LIMIT >= 1 and self.drop_fail_count >= self.DROP_FAIL_LIMIT:  # If FAIL_LIMIT == -1 (or any neg num), never pause
+                            self.pause_event.clear()  # Pause all channels before awaiting, so only this channel handles the limit
+                            if self.COMMAND_CHANNEL_IDS:
+                                await self.send_message(token, self.tokens.index(token) + 1, self.COMMAND_CHANNEL_IDS[0], "⚠️ Drop fail limit reached", 0)
+                            if self.TERMINAL_VISIBILITY:
+                                await self.async_input_handler(f"\n⚠️ Drop Fail Limit Reached ⚠️\nThe script has failed to retrieve {self.DROP_FAIL_LIMIT} total drops. Automatically pausing drops...\nPress `Enter` if you wish to resume.\n",
+                                                                                "", self.DROP_FAIL_LIMIT_REACHED_FLAG)
+                    except Exception as e:  # Keep the channel running after errors such as dropped connections
+                        print(f"\n❌ Error in Channel #{channel_num} Drop ❌\n{e}")
                     # Breaking up delay into multiple steps to check if need to pause
                     random_delay = delay + random.uniform(0.5 * 60, 10 * 60)  # Wait an additional 0.5-10 minutes per drop
                     random_delay_per_step = random.uniform(2, 3)
@@ -804,9 +823,21 @@ class DropScript():
                         await self.pause_event.wait()  # Check if need to pause
                         await asyncio.sleep(random_delay_per_step)
                         if random.random() < self.RANDOM_COMMAND_RATE:
-                            await self.send_message(token, self.tokens.index(token) + 1, channel_id, random.choice(self.RANDOM_COMMANDS), 0)
+                            with contextlib.suppress(aiohttp.ClientError, asyncio.TimeoutError):  # Random commands are optional
+                                await self.send_message(token, self.tokens.index(token) + 1, channel_id, random.choice(self.RANDOM_COMMANDS), 0)
         except Exception as e:
             print(f"\n❌ Error in Channel #{channel_num} Script Instance ❌\n{e}")
+
+    def create_background_task(self, coro):
+        task = asyncio.create_task(coro)
+        self.background_tasks.add(task)  # Keep a reference so the task is not garbage collected mid-execution
+        task.add_done_callback(self.on_background_task_done)
+        return task
+
+    def on_background_task_done(self, task: asyncio.Task):
+        self.background_tasks.discard(task)
+        if not task.cancelled() and task.exception():
+            print(f"\n❌ Background Task Error ❌\n{task.exception()}")
 
     async def run_command_checkers(self):
         if self.COMMAND_CHANNEL_IDS:
@@ -820,7 +851,7 @@ class DropScript():
                     karuta_bot_id = self.KARUTA_BOT_ID,
                     rate_limit = self.RATE_LIMIT
                 )
-                asyncio.create_task(command_checker.run_command_checker())
+                self.create_background_task(command_checker.run_command_checker())
             print(f"\n🤖 Message commands are enabled in {len(self.COMMAND_CHANNEL_IDS)} channel(s).")
         else:
             print("\n🤖 Message commands are disabled.")
@@ -835,6 +866,7 @@ class DropScript():
             self.channel_token_dict[v].append(k)
 
     async def run_script(self):
+        self.loop = asyncio.get_running_loop()  # Used by console_ctrl_handler, which runs on another thread
         if self.SHUFFLE_ACCOUNTS:
             self.shuffled_tokens = random.sample(self.tokens, len(self.tokens))
         else:
@@ -888,8 +920,23 @@ class DropScript():
         random_token = random.choice(self.tokens)
         await self.send_message(random_token, self.tokens.index(random_token) + 1, self.COMMAND_CHANNEL_IDS[0], "Shutting down...", 0)
 
-    def signal_handler(self, signum, frame):
+    def console_ctrl_handler(self, ctrl_type: int):
+        # Closing the terminal window sends CTRL_CLOSE_EVENT instead of a signal, and Windows ends the process ~5 seconds later
+        if ctrl_type != win32con.CTRL_CLOSE_EVENT:
+            return False  # Let Ctrl+C reach signal_handler
         print("\n✅ Terminal window closed. Running cleanup...")
+        cleanup = asyncio.wait_for(self.cleanup(), timeout = 4)
+        try:
+            if self.loop and self.loop.is_running():
+                asyncio.run_coroutine_threadsafe(cleanup, self.loop).result()
+            else:
+                asyncio.run(cleanup)
+        except Exception as e:
+            print(f"❌ Cleanup failed: {e}")
+        return True
+
+    def signal_handler(self, signum, frame):
+        print("\n✅ Exit signal received. Running cleanup...")
         try:
             loop = asyncio.get_running_loop()
             task = loop.create_task(self.cleanup())
@@ -907,15 +954,16 @@ if __name__ == "__main__":
     RELAUNCH_FLAG = "--no-relaunch"
     if RELAUNCH_FLAG not in sys.argv:
         ctypes.windll.shell32.ShellExecuteW(
-            None, None, sys.executable, " ".join(sys.argv + [RELAUNCH_FLAG]), None, bot.TERMINAL_VISIBILITY
+            None, None, sys.executable, subprocess.list2cmdline(sys.argv + [RELAUNCH_FLAG]), None, bot.TERMINAL_VISIBILITY
         )
         sys.exit()
     bot.check_config()
     bot.tokens = TokenExtractor().main(standalone = False, num_channels = len(bot.DROP_CHANNEL_IDS))
     
-    # Set up signal handlers to send a message on terminal window closure
+    # Set up handlers to send a message on exit or terminal window closure
     if bot.COMMAND_CHANNEL_IDS:
         signal.signal(signal.SIGTERM, bot.signal_handler)
         signal.signal(signal.SIGINT, bot.signal_handler)
+        win32api.SetConsoleCtrlHandler(bot.console_ctrl_handler, True)
     
     asyncio.run(bot.run_script())
