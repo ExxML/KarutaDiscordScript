@@ -25,7 +25,7 @@ Discord's Terms of Service explicitly prohibits self-bots (as of August 2025, an
 pip install -r requirements.txt
 ```
 4. Ensure the Karuta drop mode (`kdropmode`) is set to reactions, NOT buttons, in ALL the drop channels.
-5. All accounts must ONLY drop 3 cards, not 4. If an accounts drops 4 cards, the fourth card will not be auto-grabbed.
+5. All accounts must ONLY drop 3 cards, not 4. If an accounts drops 4 cards, the fourth card will not be auto-grabbed. (Server drops and other users' drops with more than 3 cards are still supported by the Special Event Grabber and Server Drop Grabber.)
 6. Create/buy accounts for the script to use! I **highly recommend** purchasing FULLY VERIFIED alt accounts from a trusted shop. A fully verified account means that it has a verified email AND phone number- a phone number connected to the account is imperative because Discord frequently phone-locks suspicious accounts. (You don't need to have access to the phone, it just needs to be connected to your account.)
     - If you decide to buy accounts, I recommend purchasing from https://shop.xyliase.com/product/discord-accounts-%7C-fully-verified-tokens (I am not affiliated with this shop). As of July 2025, there is plenty of cheap stock and customer service is excellent.
 7. Edit the `__init__` constants in `config.py`.
@@ -73,7 +73,7 @@ pip install -r requirements.txt
 > - Automatic confirmation for the `kburn` command will not be supported. Use the `/b 🔥` command to manually confirm the burn, or use `kmultiburn` instead.
 
 2. **Special Event Grabber**
-    - If there is a special event going on in Karuta, you can set up an account to automatically react to the event emoji(s) in all the drop channels and server activity drop channels. This feature supports multiple event emojis!
+    - If there is a special event going on in Karuta, you can set up an account to automatically react to the event emoji(s) in all the drop channels and server activity drop channels. This feature supports multiple event emojis, as well as drops with more than 3 cards!
     - To set this feature up:
       1. Set `self.SPECIAL_EVENT = True` in `config.py`.
       2. Enter string key and string value pairs in `special_event_tokens.json` to automatically react to drops with the desired emoji, on the desired account.
@@ -93,6 +93,7 @@ pip install -r requirements.txt
 
 3. **Server Drop Grabber**
     - You can set up accounts to watch server activity drop channels and automatically grab pog cards, as defined by CardCompanion. Note that you must have CardCompanion pog filters set up in order to use this feature.
+    - Server drops with more than 3 cards are supported; pog cards in any position will be grabbed.
     - To set this feature up:
       1. Set `self.GRAB_SERVER_POG_CARDS = True` in `config.py`.
       2. Enter a string in `server_token.json` with the token that you want to grab all the server pog cards on
