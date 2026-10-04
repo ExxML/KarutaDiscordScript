@@ -268,6 +268,8 @@ class FakeDiscord:
                 self.add(channel_id, karuta_reply(self.new_id(), msg, f"<@{uid}>, you must wait `12 minutes` before dropping more cards."))
         elif command in ("kburn", "kb") and self.reply_to_burn:
             self.add(channel_id, karuta_reply(self.new_id(), msg, title = "Burn Card", buttons = [("❌", "burn_cancel"), ("🔥", "burn_confirm")]))
+        elif command in ("kgive", "kg"):
+            self.add(channel_id, karuta_reply(self.new_id(), msg, title = "Card Transfer", buttons = [("❌", "give_cancel"), ("✅", "give_confirm")]))
         elif content.startswith("kbuy extra grab") and self.reply_to_purchase:
             self.add(channel_id, karuta_reply(self.new_id(), msg, title = "Item Purchase", buttons = [("❌", "buy_cancel"), ("✅", "buy_confirm")]))
         return FakeResponse(200, dict(msg))

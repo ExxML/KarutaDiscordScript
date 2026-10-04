@@ -129,6 +129,12 @@ async def test_rate_limit_waits_for_discords_retry_after(bot, discord, clock, ca
     assert "Rate limited, retrying after 2.5s." in capsys.readouterr().out
 
 
+async def test_rate_limit_retry_after_is_capped(bot, discord, clock):
+    discord.respond("POST", "/messages$", FakeResponse(429, {"message": "You are being rate limited.", "retry_after": 600, "global": True}))
+    await bot.send_message("tok1", 1, "100", "hi", 0)
+    assert clock.sleeps == [10]
+
+
 async def test_send_message_gives_up_after_rate_limit(bot, discord, capsys):
     discord.respond("POST", "/messages$", *[429] * 10)
     assert await bot.send_message("tok1", 1, "100", "hi", 0) is None
@@ -425,6 +431,14 @@ async def test_get_grabbed_card_code_filters(bot, discord):
     discord.add("100", {"id": "52", "content": "<@501> took the **Fake** card `fak33`!", "author": {"id": "1"}})  # Not Karuta
     discord.add("100", {"id": "53", "content": "lol <@501> took the **X** card `mid44`!", "author": {"id": KARUTA_ID}})  # Not at start
     assert await bot.get_grabbed_card_code("tok1", 1, "100", "50") is None
+
+
+async def test_get_grabbed_card_code_picks_grab_from_this_drop(bot, discord):
+    discord.add("100", {"id": "50", "content": "<@501> is dropping 3 cards!", "author": {"id": KARUTA_ID}})
+    discord.add("100", {"id": "51", "content": "<@501> took the **This** card `thi11`!", "author": {"id": KARUTA_ID}})
+    discord.add("100", {"id": "60", "content": "<@502> is dropping 3 cards!", "author": {"id": KARUTA_ID}})
+    discord.add("100", {"id": "61", "content": "<@501> took the **Later** card `lat22`!", "author": {"id": KARUTA_ID}})  # Grab from a later drop
+    assert await bot.get_grabbed_card_code("tok1", 1, "100", "50") == "thi11"
 
 
 async def test_get_grabbed_card_code_http_error(bot, discord, capsys):

@@ -1,6 +1,7 @@
 """Server drops and other users' drops with more than 3 cards (Server Drop Grabber and Special Event Grabber)."""
 import asyncio
 
+import aiohttp
 import pytest
 
 from conftest import CARD_EMOJIS, USER_IDS, card_companion_msg, karuta_drop, server_drop, settle
@@ -101,6 +102,42 @@ async def test_special_event_ignores_large_drops_without_event_emoji(bot, discor
     discord.add(SERVER_CHANNEL, karuta_drop("1001", "777", num_cards = num_cards))
     await run_checker_once(bot, checker)
     assert reactions_on(discord, "1001") == []
+
+
+async def test_special_event_unmapped_emoji_does_not_skip_mapped_emoji(bot, discord, checker):
+    bot.SPECIAL_EVENT = True
+    checker.special_event_tokens_dict = {"🎃": "eventTok"}  # No "any" token
+    discord.add(SERVER_CHANNEL, server_drop("1001", extra_emojis = ["🎃", "🌼"]))  # 🌼 is checked first
+    await run_checker_once(bot, checker)
+    assert reactions_on(discord, "1001") == [("eventTok", "🎃")]
+
+
+@pytest.mark.parametrize("failure", [429, 503, ConnectionResetError], ids = ["rate-limited", "server-error", "connection-error"])
+async def test_checker_loop_keeps_checking_after_temporary_failure(bot, discord, checker, monkeypatch, failure):
+    bot.SPECIAL_EVENT = True
+    discord.add(SERVER_CHANNEL, server_drop("1001", extra_emojis = ["🎃"]))
+    if failure is ConnectionResetError:
+        handle = discord.handle
+        failed = []
+        def fail_once(method, url, *args):
+            if not failed and "limit=20" in url:
+                failed.append(url)
+                raise aiohttp.ClientOSError()
+            return handle(method, url, *args)
+        monkeypatch.setattr(discord, "handle", fail_once)
+    else:
+        discord.respond("GET", r"limit=20$", failure)
+    await run_checker_once(bot, checker)
+    assert reactions_on(discord, "1001") == [("eventTok", "🎃")]
+
+
+async def test_checker_loop_stops_after_permanent_failure(bot, discord, checker):
+    bot.SPECIAL_EVENT = True
+    discord.add(SERVER_CHANNEL, server_drop("1001", extra_emojis = ["🎃"]))
+    discord.respond("GET", r"limit=20$", 403)
+    await run_checker_once(bot, checker)
+    assert reactions_on(discord, "1001") == []
+    assert len(discord.calls("GET", r"limit=20$")) == 1
 
 
 # --------------------------------------------------------------------------- #

@@ -148,10 +148,10 @@ class CommandChecker():
                 # If status = 200 but no MESSAGE_COMMAND_PREFIX found |OR| If status = 502/503 but not reached limit yet
                 return None, None, None
 
-    async def check_card_transfer(self, token: str, account: int, command: str):
-        if command.startswith(f"{self.KARUTA_PREFIX}give") or command.startswith(f"{self.KARUTA_PREFIX}g"):
+    async def check_card_transfer(self, token: str, account: int, command: str, sent_command: dict | None):
+        if sent_command and (command.startswith(f"{self.KARUTA_PREFIX}give") or command.startswith(f"{self.KARUTA_PREFIX}g")):
             await asyncio.sleep(random.uniform(3, 5))  # Wait for Karuta card transfer message
-            card_transfer_message = await self.main.get_karuta_message(token, account, self.COMMAND_CHANNEL_ID, self.main.KARUTA_CARD_TRANSFER_TITLE, self.RATE_LIMIT)
+            card_transfer_message = await self.main.get_karuta_message(token, account, self.COMMAND_CHANNEL_ID, self.main.KARUTA_CARD_TRANSFER_TITLE, self.RATE_LIMIT, sent_command['id'])
             if card_transfer_message and card_transfer_message not in self.card_transfer_messages:
                 self.card_transfer_messages.append(card_transfer_message)
                 # Find ✅ button
@@ -200,10 +200,10 @@ class CommandChecker():
                 else:
                     print(f"❌ [Account #{account}] Lock multitrade failed: 🔒 button not found.")
 
-    async def check_multiburn(self, token: str, account: int, command: str):
-        if command.startswith(f"{self.KARUTA_PREFIX}multiburn") or command.startswith(f"{self.KARUTA_PREFIX}mb"):
+    async def check_multiburn(self, token: str, account: int, command: str, sent_command: dict | None):
+        if sent_command and (command.startswith(f"{self.KARUTA_PREFIX}multiburn") or command.startswith(f"{self.KARUTA_PREFIX}mb")):
             await asyncio.sleep(random.uniform(3, 5))  # Wait for Karuta multiburn message
-            multiburn_initial_message = await self.main.get_karuta_message(token, account, self.COMMAND_CHANNEL_ID, self.main.KARUTA_MULTIBURN_TITLE, self.RATE_LIMIT)
+            multiburn_initial_message = await self.main.get_karuta_message(token, account, self.COMMAND_CHANNEL_ID, self.main.KARUTA_MULTIBURN_TITLE, self.RATE_LIMIT, sent_command['id'])
             if multiburn_initial_message and multiburn_initial_message not in self.multiburn_initial_messages:
                 await asyncio.sleep(3)  # Longer delay to wait for check button to enable
                 self.multiburn_initial_messages.append(multiburn_initial_message)
@@ -310,11 +310,10 @@ class CommandChecker():
                     if (lower_account == upper_account):
                         # If single account
                         token = self.tokens[lower_account - 1]
-                        if send:
-                            await self.main.send_message(token, lower_account, self.COMMAND_CHANNEL_ID, command, self.RATE_LIMIT)
-                        await self.check_card_transfer(token, lower_account, command)
+                        sent_command = await self.main.send_message(token, lower_account, self.COMMAND_CHANNEL_ID, command, self.RATE_LIMIT) if send else None
+                        await self.check_card_transfer(token, lower_account, command, sent_command)
                         await self.check_lock_multitrade(token, lower_account, command)
-                        await self.check_multiburn(token, lower_account, command)
+                        await self.check_multiburn(token, lower_account, command, sent_command)
                         await self.confirm_multiburn(token, lower_account, command)
                         await self.check_click_button(token, lower_account, command)
                         await self.check_send_reaction(token, lower_account, command)

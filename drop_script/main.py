@@ -242,7 +242,7 @@ class DropScript():
 
     async def get_retry_after(self, resp: aiohttp.ClientResponse):
         try:
-            return float((await resp.json())['retry_after'])
+            return min(float((await resp.json())['retry_after']), 10)  # Capped so a long rate limit cannot stall drops/grabs
         except (aiohttp.ContentTypeError, KeyError, TypeError, ValueError):
             return 1  # seconds
 
@@ -534,7 +534,7 @@ class DropScript():
                 if status != 200:
                     print(f"❌ [Account #{account}] Retrieve grab message failed: Error code {status}.")
                     return None
-                for msg in await resp.json():
+                for msg in reversed(await resp.json()):  # Oldest to newest, so a grab from a later drop is never picked
                     if msg.get('author', {}).get('id') == self.KARUTA_BOT_ID and int(msg.get('id')) > int(drop_message_id):
                         # Ex. "<@user> took the **X** card `code`!" or "<@user> fought off 7 others and took the **X** card `code`!"
                         match = re.match(rf"<@{user_id}> (?:fought off .+? and )?took the \*\*.+?\*\* card `(\w+)`", msg.get('content', ''))

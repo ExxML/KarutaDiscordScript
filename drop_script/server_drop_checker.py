@@ -121,8 +121,8 @@ class ServerDropChecker():
                     token = self.special_event_tokens_dict.get(special_event_emoji)
                 else:
                     token = self.special_event_tokens_dict.get("any", "")
-                    if not token:  # If there is no token found for "any", return
-                        return
+                    if not token:  # If there is no token found for "any", skip this emoji
+                        continue
                 if not await self.karuta_reacted(token, channel_id, msg_id, special_event_emoji):
                     continue  # Reaction was added by a player, not by Karuta
                 await self.main.add_reaction(token, 0, channel_id, msg_id, special_event_emoji, 0)  # 0 as account stub
@@ -203,7 +203,12 @@ class ServerDropChecker():
                                         self.main.create_background_task(self.grab_server_drop(channel_id, msg_id))  # Run asynchronously so multiple drops can be grabbed concurrently
                             else:
                                 print(f"❌ [Special Event Account] Retrieve message failed: Error code {status}.")
-                                return None
+                                if status == 429:
+                                    await asyncio.sleep(await self.main.get_retry_after(resp))
+                                elif status < 500:
+                                    return None  # Only rate limits and server errors are temporary
+            except (aiohttp.ClientError, asyncio.TimeoutError) as e:  # Dropped connections are temporary, so keep checking
+                print(f"\n❌ Special Event Checker Connection Error ❌\n{e}")
             except Exception as e:
                 print(f"\n❌ Special Event Checker Failed ❌\n{e}")
                 return
