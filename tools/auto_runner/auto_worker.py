@@ -169,7 +169,7 @@ class AutoWorker():
                     retry_after = 1  # seconds
                     print(f"⚠️ [Account #{account}] Send message '{content}' failed ({rate_limited}/{self.RATE_LIMIT}): Rate limited, retrying after {retry_after}s.")
                     await asyncio.sleep(retry_after)
-                    await self.send_message(token, account, channel_id, content, rate_limited)
+                    return await self.send_message(token, account, channel_id, content, rate_limited)
                 else:
                     print(f"❌ [Account #{account}] Send message '{content}' failed: Error code {status}.")
                 return status == 200
@@ -193,7 +193,7 @@ class AutoWorker():
                     messages = await resp.json()
                     try:
                         for msg in messages:
-                            referenced_author_id = msg.get('referenced_message', {}).get('author', {}).get('id')  # Get the user ID of the user being replied to
+                            referenced_author_id = (msg.get('referenced_message') or {}).get('author', {}).get('id')  # Get the user ID of the user being replied to (null if that message was deleted)
                             if msg.get('author', {}).get('id') == self.KARUTA_BOT_ID and referenced_author_id == await self.get_user_id(token, channel_id):
                                 if search_content == self.KARUTA_NODES_OVERVIEW_TITLE and msg.get('embeds') and self.KARUTA_NODES_OVERVIEW_TITLE == msg['embeds'][0].get('title'):
                                     print(f"✅ [Account #{account}] Retrieved Nodes Overview message.")
@@ -265,5 +265,4 @@ class AutoWorker():
                             await self.click_button(token, account_num, random_work_channel_id, '✅')
                             await asyncio.sleep(random.uniform(3, 5))  # Wait for Work message to update
                             work_msg = await self.get_karuta_message(token, account_num, random_work_channel_id, self.KARUTA_WORK_TITLE, 0)
-                            user_id = await self.get_user_id(token, random_work_channel_id)
-                            self.confirm_work_complete(account_num, user_id, work_msg)
+                            self.confirm_work_complete(account_num, work_msg)

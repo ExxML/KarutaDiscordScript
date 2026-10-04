@@ -89,7 +89,7 @@ class AutoRunner():
             elif self.AUTO_VOTE and not self.AUTO_WORK:
                 self.auto_voter.vote_setup(token, account_idx + 1)
             elif not self.AUTO_VOTE and self.AUTO_WORK:
-                self.auto_worker.auto_work(token, account_idx + 1)
+                asyncio.run(self.auto_worker.auto_work(token, account_idx + 1))
 
             delay = random.uniform(self.RAND_DELAY_MIN, self.RAND_DELAY_MAX) * 60  # Random delay between votes
             print(f"\nWaiting {round(delay / 60)} minutes before running on another account...\n")
